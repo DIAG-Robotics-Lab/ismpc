@@ -21,13 +21,7 @@
         <mesh filename="../meshes/WAIST_LINK.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/WAIST_LINK.dae"/>
-      </geometry>
-    </collision>
-  </link>
+      </link>
   <link name="R_HIP_Y_LINK">
     <inertial>
       <origin rpy="0 0 0" xyz="-0.01667657 2e-08 0.04993135"/>
@@ -40,13 +34,7 @@
         <mesh filename="../meshes/HIP_Y.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/HIP_Y.dae"/>
-      </geometry>
-    </collision>
-  </link>
+      </link>
   <link name="R_HIP_R_LINK">
     <inertial>
       <origin rpy="0 0 0" xyz="-0.00431692 0.00595121 -0.00052352"/>
@@ -59,13 +47,7 @@
         <mesh filename="../meshes/CHEST_P.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/CHEST_P.dae"/>
-      </geometry>
-    </collision>
-  </link>
+      </link>
   <link name="R_HIP_P_LINK">
     <inertial>
       <origin rpy="0 0 0" xyz="0.00401404 0.01530275 -0.18851723"/>
@@ -78,13 +60,7 @@
         <mesh filename="../meshes/R_HIP_P.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/R_HIP_P.dae"/>
-      </geometry>
-    </collision>
-  </link>
+      </link>
   <link name="R_KNEE_P_LINK">
     <inertial>
       <origin rpy="0 0 0" xyz="-0.01122115 -0.00133701 -0.15252868"/>
@@ -97,13 +73,7 @@
         <mesh filename="../meshes/R_KNEE_P.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/R_KNEE_P.dae"/>
-      </geometry>
-    </collision>
-  </link>
+      </link>
   <link name="R_ANKLE_P_LINK">
     <inertial>
       <origin rpy="0 0 0" xyz="-0.00368911 -0.00015844 0.00129883"/>
@@ -116,13 +86,7 @@
         <mesh filename="../meshes/L_ANKLE_P.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/L_ANKLE_P.dae"/>
-      </geometry>
-    </collision>
-  </link>
+      </link>
   <link name="R_ANKLE_R_LINK">
     <inertial>
       <origin rpy="0 0 0" xyz="-0.00340792 1e-08 -0.04591586"/>
@@ -135,53 +99,28 @@
         <mesh filename="../meshes/R_ANKLE_R.dae"/>
       </geometry>
     </visual>
+      </link>
+
+  <link name="r_sole">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <mass value="1.0" />
+      <inertia ixx="1.0" ixy="0" ixz="0" iyy="1.0" iyz="0" izz="1.0" />
+    </inertial>
+   <!--visual>
+      <geometry>
+        <box size="0.25 0.13 0.05"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0.0 -0.01 0.025"/>
+    </visual -->
     <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="../meshes/R_ANKLE_R.dae"/>
+        <box size="0.25 0.13 0.05"/>
       </geometry>
+      <origin rpy="0 0 0" xyz="0.0 -0.010 0.025"/>
     </collision>
   </link>
 
-  <link name="r_sole">
-    <inertial>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <mass value="0.001"/>
-      <inertia ixx="0.00001" ixy="0" ixz="0" iyy="0.00001" iyz="0" izz="0.00001"/>
-    </inertial>
-
-   <visual>
-      <geometry>
-        <box size="0.18 0.1 0.007"/>
-      </geometry>
-      <origin rpy="0 0 0" xyz="0.0 -0.01 0.0029"/>
-    </visual>
-   <collision>
-     <geometry>
-        <box size="0.18 0.1 0.007"/>
-      </geometry>
-      <origin rpy="0 0 0" xyz="0.0 -0.01 0.0029"/>
-    </collision>
-    <!--inertial>
-      <mass value="1.0"/>
-      <mu value="0.5"/>
-      <inertia ixx="1.1e-09" ixy="0" ixz="0" iyy="1.1e-09" iyz="0" izz="1.1e-09"/>
-    </inertial-->
-
-  </link>
-<!--
-  <link name="r_sole">
- <collision>
-      <geometry>
-        <box size="0.08 0.08 0.001"/>
-      </geometry>
-      <origin rpy="0 0.00 0.002" xyz="0.0 0.005 0"/>
-    </collision>
-    <inertial>
-      <mass value="2e-06"/>
-      <inertia ixx="1.1e-09" ixy="0" ixz="0" iyy="1.1e-09" iyz="0" izz="1.1e-09"/>
-    </inertial>
-  </link>-->
   <link name="L_HIP_Y_LINK">
     <inertial>
       <origin rpy="0 0 0" xyz="-0.01667657 2e-08 0.04993135"/>
@@ -194,13 +133,7 @@
         <mesh filename="../meshes/HIP_Y.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/HIP_Y.dae"/>
-      </geometry>
-    </collision>
-  </link>
+      </link>
   <link name="L_HIP_R_LINK">
     <inertial>
       <origin rpy="0 0 0" xyz="-0.00431692 0.00595121 -0.00052352"/>
@@ -213,13 +146,7 @@
         <mesh filename="../meshes/CHEST_P.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/CHEST_P.dae"/>
-      </geometry>
-    </collision>
-  </link>
+      </link>
   <link name="L_HIP_P_LINK">
     <inertial>
       <origin rpy="0 0 0" xyz="0.00400906 -0.00541624 -0.18827632"/>
@@ -232,13 +159,7 @@
         <mesh filename="../meshes/L_HIP_P.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/L_HIP_P.dae"/>
-      </geometry>
-    </collision>
-  </link>
+      </link>
   <link name="L_KNEE_P_LINK">
     <inertial>
       <origin rpy="0 0 0" xyz="-0.01122115 -0.00133701 -0.15252868"/>
@@ -251,13 +172,7 @@
         <mesh filename="../meshes/L_KNEE_P.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/L_KNEE_P.dae"/>
-      </geometry>
-    </collision>
-  </link>
+      </link>
   <link name="L_ANKLE_P_LINK">
     <inertial>
       <origin rpy="0 0 0" xyz="-0.00368911 -0.00015844 0.00129883"/>
@@ -270,13 +185,7 @@
         <mesh filename="../meshes/L_ANKLE_P.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/L_ANKLE_P.dae"/>
-      </geometry>
-    </collision>
-  </link>
+      </link>
   <link name="L_ANKLE_R_LINK">
     <inertial>
       <origin rpy="0 0 0" xyz="-0.00340792 0 -0.04591586"/>
@@ -289,54 +198,28 @@
         <mesh filename="../meshes/L_ANKLE_R.dae"/>
       </geometry>
     </visual>
+      </link>
+
+  <link name="l_sole">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <mass value="1.0" />
+      <inertia ixx="1.0" ixy="0" ixz="0" iyy="1.0" iyz="0" izz="1.0" />
+    </inertial>
+   <!--visual>
+      <geometry>
+        <box size="0.25 0.13 0.05"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0.0 0.010 0.025"/>
+    </visual -->
     <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="../meshes/L_ANKLE_R.dae"/>
+        <box size="0.25 0.13 0.05"/>
       </geometry>
+      <origin rpy="0 0 0" xyz="0.0 0.010 0.025"/>
     </collision>
   </link>
 
-  <link name="l_sole">
-    <inertial>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <mass value="0.001"/>
-      <inertia ixx="0.00001" ixy="0" ixz="0" iyy="0.00001" iyz="0" izz="0.00001"/>
-    </inertial>
-
-   <visual>
-      <geometry>
-        <box size="0.18 0.1 0.007"/>
-      </geometry>
-      <origin rpy="0 0 0" xyz="0.0 0.010 0.0029"/>
-    </visual>
-   <collision>
-      <geometry>
-        <box size="0.18 0.1 0.007"/>
-      </geometry>
-      <origin rpy="0 0 0" xyz="0.0 0.010 0.0029"/>
-    </collision>
-    <!--inertial>
-      <mass value="1.0"/>
-      <mu value="0.5"/>
-      <inertia ixx="1.1e-09" ixy="0" ixz="0" iyy="1.1e-09" iyz="0" izz="1.1e-09"/>
-    </inertial>
--->
-
-  </link>
-<!--
-  <link name="l_sole">
-   <collision>
-      <geometry>
-        <box size="0.14 0.078 0.007"/>
-      </geometry>
-      <origin rpy="0 0.00 0.002" xyz="0.0 0.005 0"/>
-    </collision>
-    <inertial>
-      <mass value="2e-06"/>
-      <inertia ixx="1.1e-09" ixy="0" ixz="0" iyy="1.1e-09" iyz="0" izz="1.1e-09"/>
-    </inertial>
-  </link>-->
   <link name="CHEST_P_LINK">
     <inertial>
       <origin rpy="0 0 0" xyz="-0.00442006 0.00280574 0.03664874"/>
@@ -355,19 +238,7 @@
         <mesh filename="../meshes/CHEST_R.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/CHEST_P.dae"/>
-      </geometry>
-    </collision>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/CHEST_P.dae"/>
-      </geometry>
-    </collision>
-  </link>
+          </link>
   <link name="torso">
     <inertial>
       <origin rpy="0 0 0" xyz="-0.02868847 -0.00245957 0.20400698"/>
@@ -380,13 +251,7 @@
         <mesh filename="../meshes/CHEST_Y.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/CHEST_Y.dae"/>
-      </geometry>
-    </collision>
-  </link>
+      </link>
   <link name="NECK_Y_LINK">
     <inertial>
       <origin rpy="0 0 0" xyz="-0.01142441 0.00157484 -0.02134892"/>
@@ -399,13 +264,7 @@
         <mesh filename="../meshes/NECK_Y.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/NECK_Y.dae"/>
-      </geometry>
-    </collision>
-  </link>
+      </link>
   <link name="NECK_P_LINK">
     <inertial>
       <origin rpy="0 0 0" xyz="0.00532833 -0.00053047 0.0176936"/>
@@ -418,13 +277,7 @@
         <mesh filename="../meshes/NECK_P.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/NECK_P.dae"/>
-      </geometry>
-    </collision>
-  </link>
+      </link>
   <link name="R_SHOULDER_P_LINK">
     <inertial>
       <origin rpy="0 0 0" xyz="0.00141599 0.04257567 0.00031503"/>
@@ -437,13 +290,7 @@
         <mesh filename="../meshes/R_SHOULDER_P.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/R_SHOULDER_P.dae"/>
-      </geometry>
-    </collision>
-  </link>
+      </link>
   <link name="R_SHOULDER_R_LINK">
     <inertial>
       <origin rpy="0 0 0" xyz="0.00019752 -0.00272557 -0.04191141"/>
@@ -456,13 +303,7 @@
         <mesh filename="../meshes/R_SHOULDER_R.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/R_SHOULDER_R.dae"/>
-      </geometry>
-    </collision>
-  </link>
+      </link>
   <link name="R_SHOULDER_Y_LINK">
     <inertial>
       <origin rpy="0 0 0" xyz="-0.00273859 -0.00036268 -0.17426645"/>
@@ -475,13 +316,7 @@
         <mesh filename="../meshes/SHOULDER_Y.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/SHOULDER_Y.dae"/>
-      </geometry>
-    </collision>
-  </link>
+      </link>
   <link name="R_ELBOW_P_LINK">
     <inertial>
       <origin rpy="0 0 0" xyz="-0.01222096 0.00049299 -0.07271909"/>
@@ -494,13 +329,7 @@
         <mesh filename="../meshes/ELBOW_P.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/ELBOW_P.dae"/>
-      </geometry>
-    </collision>
-  </link>
+      </link>
   <link name="R_WRIST_Y_LINK">
     <inertial>
       <origin rpy="0 0 0" xyz="-0.00749481 9.419e-05 -0.17044123"/>
@@ -513,13 +342,7 @@
         <mesh filename="../meshes/R_WRIST_Y.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/R_WRIST_Y.dae"/>
-      </geometry>
-    </collision>
-  </link>
+      </link>
   <link name="R_WRIST_P_LINK">
     <inertial>
       <origin rpy="0 0 0" xyz="0.00255098 0.00162183 0.01074678"/>
@@ -532,13 +355,7 @@
         <mesh filename="../meshes/WRIST_P.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/WRIST_P.dae"/>
-      </geometry>
-    </collision>
-  </link>
+      </link>
   <link name="r_wrist">
     <inertial>
       <origin rpy="0 0 0" xyz="-0.00357307 -0.00756083 -0.07562434"/>
@@ -551,13 +368,7 @@
         <mesh filename="../meshes/R_WRIST_R.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/R_WRIST_R.dae"/>
-      </geometry>
-    </collision>
-  </link>
+      </link>
   <link name="R_HAND_J0_LINK">
     <inertial>
       <origin rpy="0 0 0" xyz="0.03905018 0.0103447 -0.02583122"/>
@@ -570,13 +381,7 @@
         <mesh filename="../meshes/R_THUMB.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/R_THUMB.dae"/>
-      </geometry>
-    </collision>
-  </link>
+      </link>
   <link name="R_HAND_J1_LINK">
     <inertial>
       <origin rpy="0 0 0" xyz="-0.00520681 -8.854e-05 -0.01902284"/>
@@ -589,13 +394,7 @@
         <mesh filename="../meshes/R_F1.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/R_F1.dae"/>
-      </geometry>
-    </collision>
-  </link>
+      </link>
   <link name="R_F22_LINK">
     <inertial>
       <origin rpy="0 0 0" xyz="-0.00031853 0.00034526 -0.01168186"/>
@@ -608,13 +407,7 @@
         <mesh filename="../meshes/F2.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/F2.dae"/>
-      </geometry>
-    </collision>
-  </link>
+      </link>
   <link name="R_F23_LINK">
     <inertial>
       <origin rpy="0 0 0" xyz="-0.00035576 -0.00103228 -0.00714888"/>
@@ -627,13 +420,7 @@
         <mesh filename="../meshes/F3.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/F3.dae"/>
-      </geometry>
-    </collision>
-  </link>
+      </link>
   <link name="R_F32_LINK">
     <inertial>
       <origin rpy="0 0 0" xyz="-0.00031853 0.00034526 -0.01168186"/>
@@ -646,13 +433,7 @@
         <mesh filename="../meshes/F2.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/F2.dae"/>
-      </geometry>
-    </collision>
-  </link>
+      </link>
   <link name="R_F33_LINK">
     <inertial>
       <origin rpy="0 0 0" xyz="-0.00035576 -0.00103228 -0.00714888"/>
@@ -665,13 +446,7 @@
         <mesh filename="../meshes/F3.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/F3.dae"/>
-      </geometry>
-    </collision>
-  </link>
+      </link>
   <link name="R_F42_LINK">
     <inertial>
       <origin rpy="0 0 0" xyz="-0.00031853 0.00034526 -0.01168186"/>
@@ -684,13 +459,7 @@
         <mesh filename="../meshes/F2.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/F2.dae"/>
-      </geometry>
-    </collision>
-  </link>
+      </link>
   <link name="R_F43_LINK">
     <inertial>
       <origin rpy="0 0 0" xyz="-0.00035576 -0.00103228 -0.00714888"/>
@@ -703,13 +472,7 @@
         <mesh filename="../meshes/F3.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/F3.dae"/>
-      </geometry>
-    </collision>
-  </link>
+      </link>
   <link name="R_F52_LINK">
     <inertial>
       <origin rpy="0 0 0" xyz="-0.00031853 0.00034526 -0.01168186"/>
@@ -722,13 +485,7 @@
         <mesh filename="../meshes/F2.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/F2.dae"/>
-      </geometry>
-    </collision>
-  </link>
+      </link>
   <link name="R_F53_LINK">
     <inertial>
       <origin rpy="0 0 0" xyz="-0.00035576 -0.00103228 -0.00714888"/>
@@ -741,13 +498,7 @@
         <mesh filename="../meshes/F3.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/F3.dae"/>
-      </geometry>
-    </collision>
-  </link>
+      </link>
   <link name="L_SHOULDER_P_LINK">
     <inertial>
       <origin rpy="0 0 0" xyz="0.00141599 -0.04257567 -0.00031503"/>
@@ -760,13 +511,7 @@
         <mesh filename="../meshes/L_SHOULDER_P.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/L_SHOULDER_P.dae"/>
-      </geometry>
-    </collision>
-  </link>
+      </link>
   <link name="L_SHOULDER_R_LINK">
     <inertial>
       <origin rpy="0 0 0" xyz="0.00019752 -8.916e-05 -0.04191141"/>
@@ -779,13 +524,7 @@
         <mesh filename="../meshes/L_SHOULDER_R.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/L_SHOULDER_R.dae"/>
-      </geometry>
-    </collision>
-  </link>
+      </link>
   <link name="L_SHOULDER_Y_LINK">
     <inertial>
       <origin rpy="0 0 0" xyz="-0.00273859 -0.00036268 -0.17426645"/>
@@ -798,13 +537,7 @@
         <mesh filename="../meshes/SHOULDER_Y.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/SHOULDER_Y.dae"/>
-      </geometry>
-    </collision>
-  </link>
+      </link>
   <link name="L_ELBOW_P_LINK">
     <inertial>
       <origin rpy="0 0 0" xyz="-0.01222096 0.00049299 -0.07271909"/>
@@ -817,13 +550,7 @@
         <mesh filename="../meshes/ELBOW_P.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/ELBOW_P.dae"/>
-      </geometry>
-    </collision>
-  </link>
+      </link>
   <link name="L_WRIST_Y_LINK">
     <inertial>
       <origin rpy="0 0 0" xyz="-0.00749574 -9.418e-05 -0.17044123"/>
@@ -836,13 +563,7 @@
         <mesh filename="../meshes/L_WRIST_Y.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/L_WRIST_Y.dae"/>
-      </geometry>
-    </collision>
-  </link>
+      </link>
   <link name="L_WRIST_P_LINK">
     <inertial>
       <origin rpy="0 0 0" xyz="-0.00255098 -0.00162183 0.01074678"/>
@@ -855,13 +576,7 @@
         <mesh filename="../meshes/WRIST_P.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/WRIST_P.dae"/>
-      </geometry>
-    </collision>
-  </link>
+      </link>
   <link name="l_wrist">
     <inertial>
       <origin rpy="0 0 0" xyz="-0.00241915 0.00756006 -0.07562466"/>
@@ -874,13 +589,7 @@
         <mesh filename="../meshes/L_WRIST_R.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/L_WRIST_R.dae"/>
-      </geometry>
-    </collision>
-  </link>
+      </link>
   <link name="L_HAND_J0_LINK">
     <inertial>
       <origin rpy="0 0 0" xyz="0.03905018 -0.0103447 -0.02583122"/>
@@ -893,13 +602,7 @@
         <mesh filename="../meshes/L_THUMB.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/L_THUMB.dae"/>
-      </geometry>
-    </collision>
-  </link>
+      </link>
   <link name="L_HAND_J1_LINK">
     <inertial>
       <origin rpy="0 0 0" xyz="-0.00479332 8.854e-05 -0.01902284"/>
@@ -912,13 +615,7 @@
         <mesh filename="../meshes/L_F1.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/L_F1.dae"/>
-      </geometry>
-    </collision>
-  </link>
+      </link>
   <link name="L_F22_LINK">
     <inertial>
       <origin rpy="0 0 0" xyz="0.00031853 -0.00034526 -0.01168186"/>
@@ -931,13 +628,7 @@
         <mesh filename="../meshes/F2.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/F2.dae"/>
-      </geometry>
-    </collision>
-  </link>
+      </link>
   <link name="L_F23_LINK">
     <inertial>
       <origin rpy="0 0 0" xyz="0.00035576 0.00103228 -0.00714888"/>
@@ -950,13 +641,7 @@
         <mesh filename="../meshes/F3.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/F3.dae"/>
-      </geometry>
-    </collision>
-  </link>
+      </link>
   <link name="L_F32_LINK">
     <inertial>
       <origin rpy="0 0 0" xyz="0.00031853 -0.00034526 -0.01168186"/>
@@ -969,13 +654,7 @@
         <mesh filename="../meshes/F2.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/F2.dae"/>
-      </geometry>
-    </collision>
-  </link>
+      </link>
   <link name="L_F33_LINK">
     <inertial>
       <origin rpy="0 0 0" xyz="0.00035576 0.00103228 -0.00714888"/>
@@ -988,13 +667,7 @@
         <mesh filename="../meshes/F3.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/F3.dae"/>
-      </geometry>
-    </collision>
-  </link>
+      </link>
   <link name="L_F42_LINK">
     <inertial>
       <origin rpy="0 0 0" xyz="0.00031853 -0.00034526 -0.01168186"/>
@@ -1007,13 +680,7 @@
         <mesh filename="../meshes/F2.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/F2.dae"/>
-      </geometry>
-    </collision>
-  </link>
+      </link>
   <link name="L_F43_LINK">
     <inertial>
       <origin rpy="0 0 0" xyz="0.00035576 0.00103228 -0.00714888"/>
@@ -1026,13 +693,7 @@
         <mesh filename="../meshes/F3.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/F3.dae"/>
-      </geometry>
-    </collision>
-  </link>
+      </link>
   <link name="L_F52_LINK">
     <inertial>
       <origin rpy="0 0 0" xyz="0.00031853 -0.00034526 -0.01168186"/>
@@ -1045,13 +706,7 @@
         <mesh filename="../meshes/F2.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/F2.dae"/>
-      </geometry>
-    </collision>
-  </link>
+      </link>
   <link name="L_F53_LINK">
     <inertial>
       <origin rpy="0 0 0" xyz="0.00035576 0.00103228 -0.00714888"/>
@@ -1064,13 +719,7 @@
         <mesh filename="../meshes/F3.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/F3.dae"/>
-      </geometry>
-    </collision>
-  </link>
+      </link>
   <!--   Joints following below -->
   <joint name="R_HIP_Y" type="revolute">
     <origin rpy="0 0 0" xyz="0 -0.0875 0"/>
@@ -1468,13 +1117,7 @@
         <mesh filename="../meshes/R_FOOT.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/R_FOOT.dae"/>
-      </geometry>
-    </collision>
-  </link>
+      </link>
   <!-- left foot -->
   <joint name="L_FOOT" type="fixed">
     <origin rpy="0 0 0" xyz="0 0 0"/>
@@ -1494,11 +1137,5 @@
         <mesh filename="../meshes/L_FOOT.dae"/>
       </geometry>
     </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="../meshes/L_FOOT.dae"/>
-      </geometry>
-    </collision>
-  </link>
+      </link>
 </robot>

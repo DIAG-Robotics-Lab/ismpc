@@ -1,16 +1,19 @@
 import numpy as np
 import casadi as cs
-from utils import LipState
 import time
 import matplotlib.pyplot as plt
 
 class Ismpc:
-  def __init__(self, initial, footstep_planner, N=100, delta=0.01, g=9.81, h=0.75):
+  def __init__(self, initial, footstep_planner, params):
     # parameters
-    self.N = N
-    self.delta = delta
-    self.eta = np.sqrt(g/h)
-    self.step_height = 0.02
+    self.N = params['N']
+    N = self.N
+    self.delta = params['world_time_step']
+    delta = self.delta
+    self.h = params['h']
+    self.eta = params['eta']
+    self.foot_size = params['foot_size']
+    self.step_height = params['step_height']
     self.initial = initial
     self.footstep_planner = footstep_planner
     self.footstep_plan = self.footstep_planner.footstep_plan
@@ -46,10 +49,10 @@ class Ismpc:
            100 * cs.sumsqr(self.X[2, 1:].T - self.zmp_x_mid_param) + \
            100 * cs.sumsqr(self.X[5, 1:].T - self.zmp_y_mid_param)
 
-    self.opt.subject_to(self.X[2, 1:].T <= self.zmp_x_mid_param + 0.1)
-    self.opt.subject_to(self.X[2, 1:].T >= self.zmp_x_mid_param - 0.1)
-    self.opt.subject_to(self.X[5, 1:].T <= self.zmp_y_mid_param + 0.1)
-    self.opt.subject_to(self.X[5, 1:].T >= self.zmp_y_mid_param - 0.1)
+    self.opt.subject_to(self.X[2, 1:].T <= self.zmp_x_mid_param + self.foot_size / 2.)
+    self.opt.subject_to(self.X[2, 1:].T >= self.zmp_x_mid_param - self.foot_size / 2.)
+    self.opt.subject_to(self.X[5, 1:].T <= self.zmp_y_mid_param + self.foot_size / 2.)
+    self.opt.subject_to(self.X[5, 1:].T >= self.zmp_y_mid_param - self.foot_size / 2.)
 
     self.opt.subject_to(self.X[:, 0] == self.x0_param)
 
@@ -62,11 +65,12 @@ class Ismpc:
     self.opt.minimize(cost)
 
     self.x = np.zeros(6)
-    self.lip_state = LipState()
+    self.lip_state = {'com': {'pos': np.zeros(3), 'vel': np.zeros(3), 'acc': np.zeros(3)},
+                      'zmp': {'pos': np.zeros(3), 'vel': np.zeros(3)}}
 
   def solve(self, current, t):
-    self.x = np.array([current.com_position[0], current.com_velocity[0], current.zmp_position[0],
-                       current.com_position[1], current.com_velocity[1], current.zmp_position[1]])
+    self.x = np.array([current['com']['pos'][0], current['com']['vel'][0], current['zmp']['pos'][0],
+                       current['com']['pos'][1], current['com']['vel'][1], current['zmp']['pos'][1]])
     
     mc_x, mc_y = self.generate_moving_constraint(t)
 
@@ -83,11 +87,11 @@ class Ismpc:
     self.opt.set_initial(self.X, sol.value(self.X))
 
     # create output LIP state
-    self.lip_state.com_position     = np.array([self.x[0], self.x[3], 0.75])
-    self.lip_state.com_velocity     = np.array([self.x[1], self.x[4], 0.])
-    self.lip_state.zmp_position     = np.array([self.x[2], self.x[5], 0.])
-    self.lip_state.zmp_velocity     = np.hstack((self.u, 0.))
-    self.lip_state.com_acceleration = np.hstack((self.eta**2 * (self.lip_state.com_position[:2] - self.lip_state.zmp_position[:2]), 0.))
+    self.lip_state['com']['pos'] = np.array([self.x[0], self.x[3], self.h])
+    self.lip_state['com']['vel'] = np.array([self.x[1], self.x[4], 0.])
+    self.lip_state['zmp']['pos'] = np.array([self.x[2], self.x[5], 0.])
+    self.lip_state['zmp']['vel'] = np.hstack((self.u, 0.))
+    self.lip_state['com']['acc'] = np.hstack((self.eta**2 * (self.lip_state['com']['pos'][:2] - self.lip_state['zmp']['pos'][:2]), 0.))
 
     contact = self.footstep_planner.get_phase_at_time(t)
     if contact == 'ss':
@@ -106,7 +110,7 @@ class Ismpc:
       return self.footstep_plan[step_index]['pos']
 
     # linear interpolation for x and y coordinates of the foot positions during double support
-    if step_index == 0: start_pos = (self.initial.left_foot_pose[3:] + self.initial.right_foot_pose[3:]) / 2.
+    if step_index == 0: start_pos = (self.initial['lsole']['pos'][3:] + self.initial['rsole']['pos'][3:]) / 2.
     else:               start_pos = np.array(self.footstep_plan[step_index]['pos'])
     target_pos = np.array(self.footstep_plan[step_index + 1]['pos'])
     
@@ -114,8 +118,8 @@ class Ismpc:
     return moving_constraint
   
   def generate_moving_constraint(self, t):
-    mc_x = np.full(self.N, (self.initial.left_foot_pose[3] + self.initial.right_foot_pose[3]) / 2.)
-    mc_y = np.full(self.N, (self.initial.left_foot_pose[4] + self.initial.right_foot_pose[4]) / 2.)
+    mc_x = np.full(self.N, (self.initial['lsole']['pos'][3] + self.initial['rsole']['pos'][3]) / 2.)
+    mc_y = np.full(self.N, (self.initial['lsole']['pos'][4] + self.initial['rsole']['pos'][4]) / 2.)
     time_array = np.array(range(t, t + self.N))
     for j in range(len(self.footstep_plan) - 1):
       fs_start_time = self.footstep_planner.get_start_time(j)

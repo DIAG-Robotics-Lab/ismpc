@@ -2,23 +2,35 @@ import numpy as np
 from utils import *
 
 class FootstepPlanner:
-    def __init__(self, vref, initial_lfoot, initial_rfoot, first_support_foot, delta):
-        default_ss_duration = 70
-        default_ds_duration = 30
+    def __init__(self, vref, initial_lfoot, initial_rfoot, params):
+        default_ss_duration = params['ss_duration']
+        default_ds_duration = params['ds_duration']
 
         unicycle_pos   = (initial_lfoot[3:5] + initial_rfoot[3:5]) / 2.
         unicycle_theta = (initial_lfoot[2]   + initial_rfoot[2]  ) / 2.
-        support_foot   = first_support_foot
+        support_foot   = params['first_swing']
         self.footstep_plan = []
 
         for j in range(len(vref)):
+            # set step duration
+            ss_duration = default_ss_duration
+            ds_duration = default_ds_duration
+
+            # exception for first step
+            if j == 0:
+                ss_duration = 0
+                ds_duration = (default_ss_duration + default_ds_duration) * 2
+
+            # exception for last step
+            # to be added
+
             # move virtual unicycle
-            for i in range(100):
+            for i in range(ss_duration + ds_duration):
                 if j > 1:
-                    unicycle_theta += vref[j][2] * delta
+                    unicycle_theta += vref[j][2] * params['world_time_step']
                     R = np.array([[np.cos(unicycle_theta), - np.sin(unicycle_theta)],
                                   [np.sin(unicycle_theta),   np.cos(unicycle_theta)]])
-                    unicycle_pos += R @ vref[j][:2] * delta
+                    unicycle_pos += R @ vref[j][:2] * params['world_time_step']
 
             # compute step position
             displacement = 0.1 if support_foot == 'left' else - 0.1
@@ -29,18 +41,6 @@ class FootstepPlanner:
                 unicycle_pos[1] + displ_y,
                 0.))
             ang = np.array((0., 0., unicycle_theta))
-
-            # set step duration
-            ss_duration = default_ss_duration
-            ds_duration = default_ds_duration
-
-            # exception for first step
-            if j == 0:
-                ss_duration = 0
-                ds_duration = default_ss_duration + default_ds_duration
-
-            # exception for last step
-            # to be added
 
             # add step to plan
             self.footstep_plan.append({

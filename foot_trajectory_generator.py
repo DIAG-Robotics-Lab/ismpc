@@ -1,9 +1,9 @@
 import numpy as np
 
 class FootTrajectoryGenerator:
-  def __init__(self, initial, footstep_planner, delta=0.01):
-    self.delta = delta
-    self.step_height = 0.02
+  def __init__(self, initial, footstep_planner, params):
+    self.delta = params['world_time_step']
+    self.step_height = params['step_height']
     self.initial = initial
     self.footstep_planner = footstep_planner
     self.footstep_plan = self.footstep_planner.footstep_plan
@@ -22,12 +22,12 @@ class FootTrajectoryGenerator:
         zero_acc = np.zeros(6)
         return {
             'left': {
-                'pos': self.initial.left_foot_pose,
+                'pos': self.initial['lsole']['pos'],
                 'vel': zero_vel,
                 'acc': zero_acc
             },
             'right': {
-                'pos': self.initial.right_foot_pose,
+                'pos': self.initial['rsole']['pos'],
                 'vel': zero_vel,
                 'acc': zero_acc
             }
