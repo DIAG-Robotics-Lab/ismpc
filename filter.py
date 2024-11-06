@@ -1,9 +1,10 @@
 import numpy as np
 
 class KalmanFilter:
-    def __init__(self, A, B, H, Q, R, P, x):
+    def __init__(self, A, B, d, H, Q, R, P, x):
         self.A = A # state transition matrix
         self.B = B # control input matrix
+        self.d = d # drift term
         self.H = H # observation matrix
         self.Q = Q # process noise covariance
         self.R = R # measurement noise covariance
@@ -11,7 +12,7 @@ class KalmanFilter:
         self.x = x # state estimate
 
     def predict(self, u):
-        self.x = self.A @ self.x + self.B @ u
+        self.x = self.A @ self.x + self.B @ u + self.d
         self.P = self.A @ self.P @ self.A.T + self.Q
         return self.x, self.P
 

@@ -16,7 +16,8 @@ class Logger():
                 self.log['desired', item, level].append(desired[item][level])
                 self.log['current', item, level].append(current[item][level])
 
-    def initialize_plot(self):
+    def initialize_plot(self, frequency=1):
+        self.frequency = frequency
         self.plot_info = [
             {'axis': 0, 'batch': 'desired', 'item': 'com', 'level': 'pos', 'dim': 0, 'color': 'blue' , 'style': '-' },
             {'axis': 0, 'batch': 'current', 'item': 'com', 'level': 'pos', 'dim': 0, 'color': 'blue' , 'style': '--'},
@@ -27,7 +28,9 @@ class Logger():
             {'axis': 1, 'batch': 'desired', 'item': 'zmp', 'level': 'pos', 'dim': 1, 'color': 'green', 'style': '-' },
             {'axis': 1, 'batch': 'current', 'item': 'zmp', 'level': 'pos', 'dim': 1, 'color': 'green', 'style': '--'},
             {'axis': 2, 'batch': 'desired', 'item': 'com', 'level': 'pos', 'dim': 2, 'color': 'blue' , 'style': '-' },
-            {'axis': 2, 'batch': 'current', 'item': 'com', 'level': 'pos', 'dim': 2, 'color': 'blue' , 'style': '--' },
+            {'axis': 2, 'batch': 'current', 'item': 'com', 'level': 'pos', 'dim': 2, 'color': 'blue' , 'style': '--'},
+            {'axis': 2, 'batch': 'desired', 'item': 'zmp', 'level': 'pos', 'dim': 2, 'color': 'green', 'style': '-' },
+            {'axis': 2, 'batch': 'current', 'item': 'zmp', 'level': 'pos', 'dim': 2, 'color': 'green', 'style': '--'},
         ]
 
         plot_num = np.max([item['axis'] for item in self.plot_info]) + 1
@@ -41,7 +44,10 @@ class Logger():
         plt.ion()
         plt.show()
 
-    def update_plot(self):
+    def update_plot(self, time):
+        if time % self.frequency != 0:
+            return
+
         for item in self.plot_info:
             trajectory_key = item['batch'], item['item'], item['level']
             trajectory = np.array(self.log[trajectory_key]).T[item['dim']]

@@ -24,7 +24,7 @@ class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
             'ss_duration': 70,
             'ds_duration': 30,
             'world_time_step': world.getTimeStep(),
-            'first_swing': 'right',
+            'first_swing': 'rfoot',
             'µ': 0.5,
             'N': 100,
             'dof': self.hrp4.getNumDofs(),
@@ -64,7 +64,7 @@ class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
 
         # initialize state
         self.initial = self.retrieve_state()
-        self.contact = 'lsole' if self.params['first_swing'] == 'right' else 'rsole' # there is a dummy footstep
+        self.contact = 'lfoot' if self.params['first_swing'] == 'rfoot' else 'rfoot' # there is a dummy footstep
         self.desired = copy.deepcopy(self.initial)
 
         # selection matrix for redundant dofs
@@ -80,8 +80,8 @@ class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
         reference = [(0.1, 0., 0.2)] * 5 + [(0.1, 0., -0.1)] * 10 + [(0.1, 0., 0.)] * 10
         self.footstep_planner = footstep_planner.FootstepPlanner(
             reference,
-            self.initial['lsole']['pos'],
-            self.initial['rsole']['pos'],
+            self.initial['lfoot']['pos'],
+            self.initial['rfoot']['pos'],
             self.params
             )
 
@@ -102,51 +102,52 @@ class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
         # initialize kalman filter
         A = np.identity(3) + self.params['world_time_step'] * self.mpc.A_lip
         B = self.params['world_time_step'] * self.mpc.B_lip
+        d = np.zeros(9)
+        d[7] = - self.params['world_time_step'] * self.params['g']
         H = np.identity(3)
         Q = block_diag(1., 1., 1.)
         R = block_diag(1e1, 1e2, 1e4)
         P = np.identity(3)
         x = np.array([self.initial['com']['pos'][0], self.initial['com']['vel'][0], self.initial['zmp']['pos'][0], \
-                      self.initial['com']['pos'][1], self.initial['com']['vel'][1], self.initial['zmp']['pos'][1]])
-        self.kf = filter.KalmanFilter(block_diag(A, A), \
-                                      block_diag(B, B), \
-                                      block_diag(H, H), \
-                                      block_diag(Q, Q), \
-                                      block_diag(R, R), \
-                                      block_diag(P, P), \
+                      self.initial['com']['pos'][1], self.initial['com']['vel'][1], self.initial['zmp']['pos'][1], \
+                      self.initial['com']['pos'][2], self.initial['com']['vel'][2], self.initial['zmp']['pos'][2]])
+        self.kf = filter.KalmanFilter(block_diag(A, A, A), \
+                                      block_diag(B, B, B), \
+                                      d, \
+                                      block_diag(H, H, H), \
+                                      block_diag(Q, Q, Q), \
+                                      block_diag(R, R, R), \
+                                      block_diag(P, P, P), \
                                       x)
 
         # initialize logger and plots
         self.logger = Logger(self.initial)
-        self.logger.initialize_plot()
+        self.logger.initialize_plot(frequency=10)
         
     def customPreStep(self):
         # create current and desired states
         self.current = self.retrieve_state()
 
         # update kalman filter
-        u = np.array([self.desired['zmp']['vel'][0], self.desired['zmp']['vel'][1]])
+        u = np.array([self.desired['zmp']['vel'][0], self.desired['zmp']['vel'][1], self.desired['zmp']['vel'][2]])
         self.kf.predict(u)
         x_flt, _ = self.kf.update(np.array([self.current['com']['pos'][0], self.current['com']['vel'][0], self.current['zmp']['pos'][0], \
-                                            self.current['com']['pos'][1], self.current['com']['vel'][1], self.current['zmp']['pos'][1]]))
+                                            self.current['com']['pos'][1], self.current['com']['vel'][1], self.current['zmp']['pos'][1], \
+                                            self.current['com']['pos'][2], self.current['com']['vel'][2], self.current['zmp']['pos'][2]]))
         
-        # update current state
+        # update current state using kalman filter output
         self.current['com']['pos'][0] = x_flt[0]
         self.current['com']['vel'][0] = x_flt[1]
         self.current['zmp']['pos'][0] = x_flt[2]
         self.current['com']['pos'][1] = x_flt[3]
         self.current['com']['vel'][1] = x_flt[4]
         self.current['zmp']['pos'][1] = x_flt[5]
+        self.current['com']['pos'][2] = x_flt[6]
+        self.current['com']['vel'][2] = x_flt[7]
+        self.current['zmp']['pos'][2] = x_flt[8]
 
-        # get references using MPC
-        #self.desired['com']['pos'] = np.array([0., 0., 0.75])
+        # get references using mpc
         lip_state, contact = self.mpc.solve(self.current, self.time)
-        if contact == 'ds':
-            pass
-        elif contact == 'ssleft':
-            self.contact = 'lsole'
-        elif contact == 'ssright':
-            self.contact = 'rsole'
 
         self.desired['com']['pos'] = lip_state['com']['pos']
         self.desired['com']['vel'] = lip_state['com']['vel']
@@ -156,20 +157,14 @@ class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
 
         # get foot trajectories
         feet_trajectories = self.foot_trajectory_generator.generate_feet_trajectories_at_time(self.time)
-        self.desired['lsole']['pos'] = feet_trajectories['left']['pos']
-        self.desired['lsole']['vel'] = feet_trajectories['left']['vel']
-        self.desired['lsole']['acc'] = feet_trajectories['left']['acc']
-        self.desired['rsole']['pos'] = feet_trajectories['right']['pos']
-        self.desired['rsole']['vel'] = feet_trajectories['right']['vel']
-        self.desired['rsole']['acc'] = feet_trajectories['right']['acc']
+        for foot in ['lfoot', 'rfoot']:
+            for key in ['pos', 'vel', 'acc']:
+                self.desired[foot][key] = feet_trajectories[foot][key]
 
         # set torso and base references to the average of the feet
-        self.desired['torso']['pos'] = (self.desired['lsole']['pos'][:3] + self.desired['rsole']['pos'][:3]) / 2.
-        self.desired['torso']['vel'] = (self.desired['lsole']['vel'][:3] + self.desired['rsole']['vel'][:3]) / 2.
-        self.desired['torso']['acc'] = (self.desired['lsole']['acc'][:3] + self.desired['rsole']['acc'][:3]) / 2.
-        self.desired['base']['pos']  = (self.desired['lsole']['pos'][:3] + self.desired['rsole']['pos'][:3]) / 2.
-        self.desired['base']['vel']  = (self.desired['lsole']['vel'][:3] + self.desired['rsole']['vel'][:3]) / 2.
-        self.desired['base']['acc']  = (self.desired['lsole']['acc'][:3] + self.desired['rsole']['acc'][:3]) / 2.
+        for link in ['torso', 'base']:
+            for key in ['pos', 'vel', 'acc']:
+                self.desired[link][key] = (self.desired['lfoot'][key][:3] + self.desired['rfoot'][key][:3]) / 2.
 
         # get torque commands using inverse dynamics
         commands = self.id.get_joint_torques(self.desired, self.current, contact) 
@@ -180,7 +175,7 @@ class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
 
         # log and plot
         self.logger.log_data(self.current, self.desired)
-        #self.logger.update_plot()
+        #self.logger.update_plot(self.time)
 
         self.time += 1
 
@@ -231,10 +226,10 @@ class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
 
         # create state dict
         return {
-            'lsole': {'pos': left_foot_pose,
+            'lfoot': {'pos': left_foot_pose,
                       'vel': l_foot_spatial_velocity,
                       'acc': np.zeros(6)},
-            'rsole': {'pos': right_foot_pose,
+            'rfoot': {'pos': right_foot_pose,
                       'vel': r_foot_spatial_velocity,
                       'acc': np.zeros(6)},
             'com'  : {'pos': com_position,

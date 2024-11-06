@@ -6,28 +6,28 @@ class FootTrajectoryGenerator:
     self.step_height = params['step_height']
     self.initial = initial
     self.footstep_planner = footstep_planner
-    self.footstep_plan = self.footstep_planner.footstep_plan
+    self.plan = self.footstep_planner.plan
 
   def generate_feet_trajectories_at_time(self, time):
     step_index = self.footstep_planner.get_step_index_at_time(time)
     time_in_step = time - self.footstep_planner.get_start_time(step_index)
     phase = self.footstep_planner.get_phase_at_time(time)
-    support_foot = self.footstep_planner.footstep_plan[step_index]['foot_id']
-    swing_foot = 'left' if support_foot == 'right' else 'right'
-    single_support_duration = self.footstep_planner.footstep_plan[step_index]['ss_duration']
+    support_foot = self.footstep_planner.plan[step_index]['foot_id']
+    swing_foot = 'lfoot' if support_foot == 'rfoot' else 'rfoot'
+    single_support_duration = self.footstep_planner.plan[step_index]['ss_duration']
 
     # if first step, return initial foot poses with zero velocities and accelerations
     if step_index == 0:
         zero_vel = np.zeros(6)
         zero_acc = np.zeros(6)
         return {
-            'left': {
-                'pos': self.initial['lsole']['pos'],
+            'lfoot': {
+                'pos': self.initial['lfoot']['pos'],
                 'vel': zero_vel,
                 'acc': zero_acc
             },
-            'right': {
-                'pos': self.initial['rsole']['pos'],
+            'rfoot': {
+                'pos': self.initial['rfoot']['pos'],
                 'vel': zero_vel,
                 'acc': zero_acc
             }
@@ -36,12 +36,12 @@ class FootTrajectoryGenerator:
     # if double support, return planned foot poses with zero velocities and accelerations
     if phase == 'ds':
         support_pose = np.hstack((
-            self.footstep_plan[step_index]['ang'],
-            self.footstep_plan[step_index]['pos']
+            self.plan[step_index]['ang'],
+            self.plan[step_index]['pos']
         ))
         swing_pose = np.hstack((
-            self.footstep_plan[step_index + 1]['ang'],
-            self.footstep_plan[step_index + 1]['pos']
+            self.plan[step_index + 1]['ang'],
+            self.plan[step_index + 1]['pos']
         ))
         zero_vel = np.zeros(6)
         zero_acc = np.zeros(6)
@@ -59,10 +59,10 @@ class FootTrajectoryGenerator:
         }
     
     # get positions and angles for cubic interpolation
-    start_pos  = self.footstep_plan[step_index - 1]['pos']
-    target_pos = self.footstep_plan[step_index + 1]['pos']
-    start_ang  = self.footstep_plan[step_index - 1]['ang']
-    target_ang = self.footstep_plan[step_index + 1]['ang']
+    start_pos  = self.plan[step_index - 1]['pos']
+    target_pos = self.plan[step_index + 1]['pos']
+    start_ang  = self.plan[step_index - 1]['ang']
+    target_ang = self.plan[step_index + 1]['ang']
 
     # time variables
     t = time_in_step
@@ -87,8 +87,8 @@ class FootTrajectoryGenerator:
     swing_acc[2] = (12 * A * t**2 + 6 * B * t    + 2 * C       ) / self.delta**2
 
     # support foot remains stationary
-    support_pos = self.footstep_plan[step_index]['pos']
-    support_ang = self.footstep_plan[step_index]['ang']
+    support_pos = self.plan[step_index]['pos']
+    support_ang = self.plan[step_index]['ang']
     zero_vel = np.zeros(3)
     zero_acc = np.zeros(3)
 

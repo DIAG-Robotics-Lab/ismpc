@@ -28,8 +28,8 @@ class InverseDynamics:
                 self.joint_selection[i, i] = 1
 
     def get_joint_torques(self, desired, current, contact):
-        contact_l = contact == 'ssleft'  or contact == 'ds'
-        contact_r = contact == 'ssright' or contact == 'ds'
+        contact_l = contact == 'lfoot'  or contact == 'ds'
+        contact_r = contact == 'rfoot' or contact == 'ds'
 
         # robot parameters
         lsole = self.robot.getBodyNode('l_sole')
@@ -38,46 +38,46 @@ class InverseDynamics:
         base  = self.robot.getBodyNode('body')
 
         # weights and gains
-        tasks = ['lsole', 'rsole', 'com', 'torso', 'base', 'joints']
-        weights   = {'lsole':  1., 'rsole':  1., 'com':  1., 'torso': 1., 'base': 1., 'joints': 1.e-2}
-        pos_gains = {'lsole': 10., 'rsole': 10., 'com':  5., 'torso': 1., 'base': 1., 'joints': 10.  }
-        vel_gains = {'lsole': 10., 'rsole': 10., 'com': 10., 'torso': 2., 'base': 2., 'joints': 1.e-1}
+        tasks = ['lfoot', 'rfoot', 'com', 'torso', 'base', 'joints']
+        weights   = {'lfoot':  1., 'rfoot':  1., 'com':  1., 'torso': 1., 'base': 1., 'joints': 1.e-2}
+        pos_gains = {'lfoot': 10., 'rfoot': 10., 'com':  5., 'torso': 1., 'base': 1., 'joints': 10.  }
+        vel_gains = {'lfoot': 10., 'rfoot': 10., 'com': 10., 'torso': 2., 'base': 2., 'joints': 1.e-1}
 
         # jacobians
-        J = {'lsole' : self.robot.getJacobian(lsole,        inCoordinatesOf=dart.dynamics.Frame.World()),
-             'rsole' : self.robot.getJacobian(rsole,        inCoordinatesOf=dart.dynamics.Frame.World()),
+        J = {'lfoot' : self.robot.getJacobian(lsole,        inCoordinatesOf=dart.dynamics.Frame.World()),
+             'rfoot' : self.robot.getJacobian(rsole,        inCoordinatesOf=dart.dynamics.Frame.World()),
              'com'   : self.robot.getCOMLinearJacobian(     inCoordinatesOf=dart.dynamics.Frame.World()),
              'torso' : self.robot.getAngularJacobian(torso, inCoordinatesOf=dart.dynamics.Frame.World()),
              'base'  : self.robot.getAngularJacobian(base,  inCoordinatesOf=dart.dynamics.Frame.World()),
              'joints': self.joint_selection}
 
         # jacobians derivatives
-        Jdot = {'lsole' : self.robot.getJacobianClassicDeriv(lsole, inCoordinatesOf=dart.dynamics.Frame.World()),
-                'rsole' : self.robot.getJacobianClassicDeriv(rsole, inCoordinatesOf=dart.dynamics.Frame.World()),
+        Jdot = {'lfoot' : self.robot.getJacobianClassicDeriv(lsole, inCoordinatesOf=dart.dynamics.Frame.World()),
+                'rfoot' : self.robot.getJacobianClassicDeriv(rsole, inCoordinatesOf=dart.dynamics.Frame.World()),
                 'com'   : self.robot.getCOMLinearJacobianDeriv(     inCoordinatesOf=dart.dynamics.Frame.World()),
                 'torso' : self.robot.getAngularJacobianDeriv(torso, inCoordinatesOf=dart.dynamics.Frame.World()),
                 'base'  : self.robot.getAngularJacobianDeriv(base,  inCoordinatesOf=dart.dynamics.Frame.World()),
                 'joints': np.zeros((self.dofs, self.dofs))}
 
         # feedforward terms
-        ff = {'lsole' : desired['lsole']['acc'],
-              'rsole' : desired['rsole']['acc'],
+        ff = {'lfoot' : desired['lfoot']['acc'],
+              'rfoot' : desired['rfoot']['acc'],
               'com'   : desired['com']['acc'],
               'torso' : desired['torso']['acc'],
               'base'  : desired['base']['acc'],
               'joints': desired['joint']['acc']}
 
         # error vectors
-        pos_error = {'lsole' : pose_difference(desired['lsole']['pos'] , current['lsole']['pos'] ),
-                     'rsole' : pose_difference(desired['rsole']['pos'], current['rsole']['pos']),
+        pos_error = {'lfoot' : pose_difference(desired['lfoot']['pos'] , current['lfoot']['pos'] ),
+                     'rfoot' : pose_difference(desired['rfoot']['pos'], current['rfoot']['pos']),
                      'com'   : desired['com']['pos'] - current['com']['pos'],
                      'torso' : rotation_vector_difference(desired['torso']['pos'], current['torso']['pos']),
                      'base'  : rotation_vector_difference(desired['base']['pos'] , current['base']['pos'] ),
                      'joints': desired['joint']['pos'] - current['joint']['pos']}
 
         # velocity error vectors
-        vel_error = {'lsole' : desired['lsole']['vel'] - current['lsole']['vel'],
-                     'rsole' : desired['rsole']['vel'] - current['rsole']['vel'],
+        vel_error = {'lfoot' : desired['lfoot']['vel'] - current['lfoot']['vel'],
+                     'rfoot' : desired['rfoot']['vel'] - current['rfoot']['vel'],
                      'com'   : desired['com']['vel']   - current['com']['vel'],
                      'torso' : desired['torso']['vel'] - current['torso']['vel'],
                      'base'  : desired['base']['vel']  - current['base']['vel'],
@@ -106,7 +106,7 @@ class InverseDynamics:
         # dynamics constraints: M * q_ddot + C - J_c^T * f_c = tau
         inertia_matrix = self.robot.getMassMatrix()
         actuation_matrix = block_diag(np.zeros((6, 6)), np.eye(self.dofs - 6))
-        contact_jacobian = np.vstack((contact_l * J['lsole'], contact_r * J['rsole']))
+        contact_jacobian = np.vstack((contact_l * J['lfoot'], contact_r * J['rfoot']))
         A_eq = np.hstack((inertia_matrix, - actuation_matrix, - contact_jacobian.T))
         b_eq = - self.robot.getCoriolisAndGravityForces()
 
