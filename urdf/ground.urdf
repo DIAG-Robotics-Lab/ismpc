@@ -4,21 +4,21 @@
     <link name="ground_link">
         <inertial>
             <mass value="1.0" />
-            <origin xyz="0 0 0" rpy="1.57079632679 0 0" />
+            <origin xyz="0 0 0" rpy="0 0 0" />
             <inertia ixx="1.0" ixy="0" ixz="0" iyy="1.0" iyz="0" izz="1.0" />
         </inertial>
         <visual>             
-            <origin xyz="-0.5 -0.5 0" rpy="1.57079632679 0 0" />
+            <origin xyz="0 0 0" rpy="0 0 0" />
             <material name="green"><color rgba="0.7 0.7 0.7 1"/></material>
             <geometry>
-                <box size="11.5 0.05005 11.5" />
+                <box size="10 10 1" />
                 <color rgba="0.99 0.99 0.7 1"/> 
             </geometry>
         </visual> 
         <collision>
             <origin xyz="0 0 0" rpy="0 0 0" />
             <geometry>
-                <box size="11.5 11.5 1" />
+                <box size="10 10 1" />
             </geometry>
         </collision>
     </link>
