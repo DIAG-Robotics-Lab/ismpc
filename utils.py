@@ -1,4 +1,4 @@
-import casadi as ca
+import proxsuite
 from scipy.spatial.transform import Rotation as R
 import numpy as np
 
@@ -36,57 +36,36 @@ def block_diag(*arrays):
 
     return block_matrix
 
-# solves a constrained QP with casadi
+# solves a constrained QP with proxqp (proxsuite):
+#   min 0.5 x' H x + F' x   s.t.  A_eq x == b_eq,  A_ineq x <= b_ineq
 class QPSolver:
     def __init__(self, n_vars, n_eq_constraints=0, n_ineq_constraints=0):
         self.n_vars = n_vars
         self.n_eq_constraints = n_eq_constraints
         self.n_ineq_constraints = n_ineq_constraints
 
-        self.opti = ca.Opti('conic')
-        self.x = self.opti.variable(self.n_vars)
+        self.qp = proxsuite.proxqp.dense.QP(n_vars, n_eq_constraints, n_ineq_constraints)
+        self.qp.settings.eps_abs = 1e-6
+        self.qp.settings.verbose = False
+        # warm start each solve from the previous solution (fast in a control loop)
+        self.qp.settings.initial_guess = proxsuite.proxqp.InitialGuess.WARM_START_WITH_PREVIOUS_RESULT
 
-        # objective function: (1/2) * x.T @ H @ x + F.T @ x
-        self.F_ = self.opti.parameter(self.n_vars)
-        self.H_ = self.opti.parameter(self.n_vars, self.n_vars)
-        objective = 0.5 * self.x.T @ self.H_ @ self.x + self.F_.T @ self.x
-        self.opti.minimize(objective)
-
-        # equality constraints: A_eq * x == b_eq
-        self.A_eq_ = self.opti.parameter(self.n_eq_constraints, self.n_vars)
-        self.b_eq_ = self.opti.parameter(self.n_eq_constraints)
-        if self.n_eq_constraints > 0:
-            self.opti.subject_to(self.A_eq_ @ self.x == self.b_eq_)
-
-        # inequality constraints: A_ineq * x <= b_ineq
-        if self.n_ineq_constraints > 0:
-            self.A_ineq_ = self.opti.parameter(self.n_ineq_constraints, self.n_vars)
-            self.b_ineq_ = self.opti.parameter(self.n_ineq_constraints)
-            self.opti.subject_to(self.A_ineq_ @ self.x <= self.b_ineq_)
-        else:
-            self.A_ineq_ = None
-            self.b_ineq_ = None
-
-        # solver options
-        p_opts = {'expand': True}
-        s_opts = {'max_iter': 1000, 'verbose': False}
-        self.opti.solver('osqp', p_opts, s_opts)
+        # proxqp uses l <= A_ineq x <= u; we only have the upper bound
+        self.lower = - 1e20 * np.ones(n_ineq_constraints) if n_ineq_constraints > 0 else None
+        self.initialized = False
 
     def set_values(self, H, F, A_eq=None, b_eq=None, A_ineq=None, b_ineq=None):
-        self.opti.set_value(self.H_, H)
-        self.opti.set_value(self.F_, F)
-        if self.n_eq_constraints > 0 and A_eq is not None and b_eq is not None:
-            self.opti.set_value(self.A_eq_, A_eq)
-            self.opti.set_value(self.b_eq_, b_eq)
-        if self.n_ineq_constraints > 0 and A_ineq is not None and b_ineq is not None:
-            self.opti.set_value(self.A_ineq_, A_ineq)
-            self.opti.set_value(self.b_ineq_, b_ineq)
+        A = A_eq   if self.n_eq_constraints   > 0 else None
+        b = b_eq   if self.n_eq_constraints   > 0 else None
+        C = A_ineq if self.n_ineq_constraints > 0 else None
+        u = b_ineq if self.n_ineq_constraints > 0 else None
+        # first call sets up the workspace, subsequent calls just update the values
+        if not self.initialized:
+            self.qp.init(H, F, A, b, C, self.lower, u)
+            self.initialized = True
+        else:
+            self.qp.update(H=H, g=F, A=A, b=b, C=C, l=self.lower, u=u)
 
     def solve(self):
-        try:
-            solution = self.opti.solve()
-            x_sol = solution.value(self.x)
-        except RuntimeError as e:
-            print("QP Solver failed:", e)
-            x_sol = np.zeros(self.n_vars)
-        return x_sol
+        self.qp.solve()
+        return np.array(self.qp.results.x).flatten()

@@ -2,6 +2,7 @@ import numpy as np
 import mujoco
 import mujoco.viewer
 import copy
+import time
 from scipy.spatial.transform import Rotation as R
 from utils import *
 import os
@@ -20,6 +21,8 @@ class Hrp4Controller:
     def __init__(self):
         self.time = 0
         self.zmp = np.zeros(3) # last valid zmp measurement, held while airborne
+        self.perf = {'loop': 0., 'mpc': 0., 'mpc_solve': 0., 'id': 0.} # cumulative timers (s)
+        self.perf_window = 100 # report averages every this many control steps
         self.params = {
             'g': 9.81,
             'h': 0.72,
@@ -135,6 +138,8 @@ class Hrp4Controller:
         self.logger.initialize_plot(frequency=10)
 
     def control(self):
+        t_loop = time.perf_counter()
+
         # create current and desired states
         self.current = self.retrieve_state()
 
@@ -157,7 +162,9 @@ class Hrp4Controller:
         self.current['zmp']['pos'][2] = x_flt[8]
 
         # get references using mpc
+        t_mpc = time.perf_counter()
         lip_state, contact = self.mpc.solve(self.current, self.time)
+        dt_mpc = time.perf_counter() - t_mpc
 
         self.desired['com']['pos'] = lip_state['com']['pos']
         self.desired['com']['vel'] = lip_state['com']['vel']
@@ -178,7 +185,9 @@ class Hrp4Controller:
                 self.desired[link][key] = (self.desired['lfoot'][key][3:6] + self.desired['rfoot'][key][3:6]) / 2.
 
         # get torque commands using inverse dynamics
+        t_id = time.perf_counter()
         commands = self.id.get_joint_torques(self.desired, self.current, contact)
+        dt_id = time.perf_counter() - t_id
 
         # set torque commands (actuators are ordered like the pinocchio joints)
         self.data.ctrl[:] = commands
@@ -186,6 +195,18 @@ class Hrp4Controller:
         # log and plot
         self.logger.log_data(self.current, self.desired)
         #self.logger.update_plot(self.time)
+
+        # accumulate timings and report the averages periodically
+        self.perf['loop']      += time.perf_counter() - t_loop
+        self.perf['mpc']       += dt_mpc
+        self.perf['mpc_solve'] += self.mpc.solve_time
+        self.perf['id']        += dt_id
+        if (self.time + 1) % self.perf_window == 0:
+            n = self.perf_window
+            print('[perf, ms/step over {}]  loop {:.2f}  |  mpc {:.2f} (solve {:.2f})  |  inv.dyn {:.2f}'.format(
+                n, 1e3 * self.perf['loop'] / n, 1e3 * self.perf['mpc'] / n,
+                1e3 * self.perf['mpc_solve'] / n, 1e3 * self.perf['id'] / n))
+            for key in self.perf: self.perf[key] = 0.
 
         self.time += 1
 

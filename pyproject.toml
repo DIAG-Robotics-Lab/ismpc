@@ -12,6 +12,7 @@ dependencies = [
     "osqp>=0.6",
     "pin>=2.7",
     "mujoco>=3.0",
+    "proxsuite>=0.7.3",
 ]
 
 [tool.uv]

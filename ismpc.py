@@ -1,5 +1,6 @@
 import numpy as np
 import casadi as cs
+import time
 
 class Ismpc:
   def __init__(self, initial, footstep_planner, params):
@@ -70,6 +71,7 @@ class Ismpc:
 
     # state
     self.x = np.zeros(9)
+    self.solve_time = 0. # time spent in the last qp solve
     self.lip_state = {'com': {'pos': np.zeros(3), 'vel': np.zeros(3), 'acc': np.zeros(3)},
                       'zmp': {'pos': np.zeros(3), 'vel': np.zeros(3)}}
 
@@ -86,7 +88,9 @@ class Ismpc:
     self.opt.set_value(self.zmp_y_mid_param, mc_y)
     self.opt.set_value(self.zmp_z_mid_param, mc_z)
 
+    t_solve = time.perf_counter()
     sol = self.opt.solve()
+    self.solve_time = time.perf_counter() - t_solve
     self.x = sol.value(self.X[:,1])
     self.u = sol.value(self.U[:,0])
 
