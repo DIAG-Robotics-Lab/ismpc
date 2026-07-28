@@ -107,8 +107,8 @@ class Ismpc:
     return self.lip_state, contact
   
   def generate_moving_constraint(self, t):
-    mc_x = np.full(self.N, (self.initial['lfoot']['pos'][3] + self.initial['rfoot']['pos'][3]) / 2.)
-    mc_y = np.full(self.N, (self.initial['lfoot']['pos'][4] + self.initial['rfoot']['pos'][4]) / 2.)
+    mc_x = np.full(self.N, (self.initial['lfoot']['pos'][0] + self.initial['rfoot']['pos'][0]) / 2.)
+    mc_y = np.full(self.N, (self.initial['lfoot']['pos'][1] + self.initial['rfoot']['pos'][1]) / 2.)
     time_array = np.array(range(t, t + self.N))
     for j in range(len(self.footstep_planner.plan) - 1):
       fs_start_time = self.footstep_planner.get_start_time(j)

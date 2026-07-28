@@ -6,8 +6,8 @@ class FootstepPlanner:
         default_ss_duration = params['ss_duration']
         default_ds_duration = params['ds_duration']
 
-        unicycle_pos   = (initial_lfoot[3:5] + initial_rfoot[3:5]) / 2.
-        unicycle_theta = (initial_lfoot[2]   + initial_rfoot[2]  ) / 2.
+        unicycle_pos   = (initial_lfoot[0:2] + initial_rfoot[0:2]) / 2.
+        unicycle_theta = (initial_lfoot[5]   + initial_rfoot[5]  ) / 2.
         support_foot   = params['first_swing']
         self.plan = []
 

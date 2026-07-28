@@ -105,14 +105,15 @@ class InverseDynamics:
         # inequality constraints
         A_ineq = np.zeros((self.n_ineq_constraints, self.n_vars))
         b_ineq = np.zeros(self.n_ineq_constraints)
-        A = np.array([[ 1, 0, 0, 0, 0, -self.d],
-                      [-1, 0, 0, 0, 0, -self.d],
-                      [0,  1, 0, 0, 0, -self.d],
-                      [0, -1, 0, 0, 0, -self.d],
-                      [0, 0, 0,  1, 0, -self.µ],
-                      [0, 0, 0, -1, 0, -self.µ],
-                      [0, 0, 0, 0,  1, -self.µ],
-                      [0, 0, 0, 0, -1, -self.µ]])
+        # contact wrench is [force, moment]: cop bounds on the moment, friction on the force
+        A = np.array([[0, 0, -self.d,  1,  0, 0],
+                      [0, 0, -self.d, -1,  0, 0],
+                      [0, 0, -self.d,  0,  1, 0],
+                      [0, 0, -self.d,  0, -1, 0],
+                      [ 1,  0, -self.µ, 0, 0, 0],
+                      [-1,  0, -self.µ, 0, 0, 0],
+                      [ 0,  1, -self.µ, 0, 0, 0],
+                      [ 0, -1, -self.µ, 0, 0, 0]])
         A_ineq[0:self.n_ineq_constraints, f_c_indices] = block_diag(A, A)
 
         # solve the QP, compute torques and return them

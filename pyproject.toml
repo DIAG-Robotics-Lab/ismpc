@@ -5,13 +5,13 @@ description = "IS-MPC: a framework for humanoid gait generation"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "dartpy>=6.16",
     "casadi>=3.6",
     "scipy>=1.11",
     "matplotlib>=3.8",
     "numpy>=1.26",
     "osqp>=0.6",
     "pin>=2.7",
+    "mujoco>=3.0",
 ]
 
 [tool.uv]

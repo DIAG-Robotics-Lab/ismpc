@@ -36,12 +36,12 @@ class FootTrajectoryGenerator:
     # if double support, return planned foot poses with zero velocities and accelerations
     if phase == 'ds':
         support_pose = np.hstack((
-            self.plan[step_index]['ang'],
-            self.plan[step_index]['pos']
+            self.plan[step_index]['pos'],
+            self.plan[step_index]['ang']
         ))
         swing_pose = np.hstack((
-            self.plan[step_index + 1]['ang'],
-            self.plan[step_index + 1]['pos']
+            self.plan[step_index + 1]['pos'],
+            self.plan[step_index + 1]['ang']
         ))
         zero_vel = np.zeros(6)
         zero_acc = np.zeros(6)
@@ -94,15 +94,15 @@ class FootTrajectoryGenerator:
 
     # assemble pose, velocity, and acceleration for each foot
     support_data = {
-        'pos': np.hstack((support_ang, support_pos)),
-        'vel': np.hstack((np.zeros(3), zero_vel)),
-        'acc': np.hstack((np.zeros(3), zero_acc))
+        'pos': np.hstack((support_pos, support_ang)),
+        'vel': np.hstack((zero_vel, np.zeros(3))),
+        'acc': np.hstack((zero_acc, np.zeros(3)))
     }
 
     swing_data = {
-        'pos': np.hstack((swing_ang_pos, swing_pos)),
-        'vel': np.hstack((swing_ang_vel, swing_vel)),
-        'acc': np.hstack((swing_ang_acc, swing_acc))
+        'pos': np.hstack((swing_pos, swing_ang_pos)),
+        'vel': np.hstack((swing_vel, swing_ang_vel)),
+        'acc': np.hstack((swing_acc, swing_ang_acc))
     }
 
     return {

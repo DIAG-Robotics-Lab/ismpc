@@ -1,6 +1,8 @@
 import numpy as np
-import dartpy as dart
+import mujoco
+import mujoco.viewer
 import copy
+from scipy.spatial.transform import Rotation as R
 from utils import *
 import os
 import ismpc
@@ -11,11 +13,11 @@ import foot_trajectory_generator as ftg
 from robot_model import RobotModel
 from logger import Logger
 
-class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
-    def __init__(self, world, hrp4):
-        super(Hrp4Controller, self).__init__(world)
-        self.world = world
-        self.hrp4 = hrp4
+# the mujoco model (mujoco/scene.xml + hrp4.xml + assets) is generated from the
+# urdf by convert_to_mjcf.py; re-run that tool if the urdf changes.
+
+class Hrp4Controller:
+    def __init__(self):
         self.time = 0
         self.zmp = np.zeros(3) # last valid zmp measurement, held while airborne
         self.params = {
@@ -25,25 +27,28 @@ class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
             'step_height': 0.02,
             'ss_duration': 70,
             'ds_duration': 30,
-            'world_time_step': world.getTimeStep(),
+            'world_time_step': 0.01,
             'first_swing': 'rfoot',
             'µ': 0.5,
             'N': 100,
-            'dof': self.hrp4.getNumDofs(),
         }
         self.params['eta'] = np.sqrt(self.params['g'] / self.params['h'])
 
         # pinocchio model: computes all kinematics/dynamics terms from the measurements
         current_dir = os.path.dirname(os.path.abspath(__file__))
         self.robot_model = RobotModel(os.path.join(current_dir, "urdf", "hrp4.urdf"))
+        self.params['dof'] = self.robot_model.nv
 
-        for i in range(hrp4.getNumJoints()):
-            joint = hrp4.getJoint(i)
-            dim = joint.getNumDofs()
+        # mujoco simulator model (actuators ordered like the pinocchio joints)
+        self.joint_order = self.robot_model.dof_names[6:]
+        self.model = mujoco.MjModel.from_xml_path(os.path.join(current_dir, "mujoco", "scene.xml"))
+        self.data = mujoco.MjData(self.model)
 
-            # set floating base to passive, everything else to torque
-            if   dim == 6: joint.setActuatorType(dart.dynamics.ActuatorType.PASSIVE)
-            elif dim == 1: joint.setActuatorType(dart.dynamics.ActuatorType.FORCE)
+        # addresses of the measured joints in mujoco order -> pinocchio order
+        joint_ids = [mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_JOINT, name) for name in self.joint_order]
+        self.qadr = np.array([self.model.jnt_qposadr[j] for j in joint_ids])
+        self.vadr = np.array([self.model.jnt_dofadr[j] for j in joint_ids])
+        self.base_bid = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, 'body')
 
         # set initial configuration
         initial_configuration = {'CHEST_P': 0., 'CHEST_Y': 0., 'NECK_P': 0., 'NECK_Y': 0., \
@@ -52,16 +57,20 @@ class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
                                  'R_SHOULDER_P': 4., 'R_SHOULDER_R': -8., 'R_SHOULDER_Y': 0., 'R_ELBOW_P': -25., \
                                  'L_SHOULDER_P': 4., 'L_SHOULDER_R':  8., 'L_SHOULDER_Y': 0., 'L_ELBOW_P': -25.}
 
+        self.data.qpos[3:7] = [1., 0., 0., 0.] # base orientation (quaternion, wxyz)
         for joint_name, value in initial_configuration.items():
-            self.hrp4.setPosition(self.hrp4.getDof(joint_name).getIndexInSkeleton(), value * np.pi / 180.)
+            jid = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_JOINT, joint_name)
+            self.data.qpos[self.model.jnt_qposadr[jid]] = value * np.pi / 180.
 
         # position the robot on the ground
+        mujoco.mj_forward(self.model, self.data)
         self.update_robot_model()
         lsole_pos = self.robot_model.get_pose('l_sole', 'pos')
         rsole_pos = self.robot_model.get_pose('r_sole', 'pos')
-        self.hrp4.setPosition(3, - (lsole_pos[0] + rsole_pos[0]) / 2.)
-        self.hrp4.setPosition(4, - (lsole_pos[1] + rsole_pos[1]) / 2.)
-        self.hrp4.setPosition(5, - (lsole_pos[2] + rsole_pos[2]) / 2.)
+        self.data.qpos[0] = - (lsole_pos[0] + rsole_pos[0]) / 2.
+        self.data.qpos[1] = - (lsole_pos[1] + rsole_pos[1]) / 2.
+        self.data.qpos[2] = - (lsole_pos[2] + rsole_pos[2]) / 2.
+        mujoco.mj_forward(self.model, self.data)
 
         # initialize state
         self.initial = self.retrieve_state()
@@ -73,7 +82,7 @@ class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
             "NECK_Y", "NECK_P", \
             "R_SHOULDER_P", "R_SHOULDER_R", "R_SHOULDER_Y", "R_ELBOW_P", \
             "L_SHOULDER_P", "L_SHOULDER_R", "L_SHOULDER_Y", "L_ELBOW_P"]
-        
+
         # initialize inverse dynamics
         self.id = id.InverseDynamics(self.robot_model, redundant_dofs)
 
@@ -88,15 +97,15 @@ class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
 
         # initialize MPC controller
         self.mpc = ismpc.Ismpc(
-            self.initial, 
-            self.footstep_planner, 
+            self.initial,
+            self.footstep_planner,
             self.params
             )
 
         # initialize foot trajectory generator
         self.foot_trajectory_generator = ftg.FootTrajectoryGenerator(
-            self.initial, 
-            self.footstep_planner, 
+            self.initial,
+            self.footstep_planner,
             self.params
             )
 
@@ -107,7 +116,7 @@ class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
         d[7] = - self.params['world_time_step'] * self.params['g']
         H = np.identity(3)
         Q = block_diag(1., 1., 1.)
-        R = block_diag(1e1, 1e2, 1e4)
+        R_kf = block_diag(1e1, 1e2, 1e4)
         P = np.identity(3)
         x = np.array([self.initial['com']['pos'][0], self.initial['com']['vel'][0], self.initial['zmp']['pos'][0], \
                       self.initial['com']['pos'][1], self.initial['com']['vel'][1], self.initial['zmp']['pos'][1], \
@@ -117,15 +126,15 @@ class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
                                       d, \
                                       block_diag(H, H, H), \
                                       block_diag(Q, Q, Q), \
-                                      block_diag(R, R, R), \
+                                      block_diag(R_kf, R_kf, R_kf), \
                                       block_diag(P, P, P), \
                                       x)
 
         # initialize logger and plots
         self.logger = Logger(self.initial)
         self.logger.initialize_plot(frequency=10)
-        
-    def customPreStep(self):
+
+    def control(self):
         # create current and desired states
         self.current = self.retrieve_state()
 
@@ -135,7 +144,7 @@ class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
         x_flt, _ = self.kf.update(np.array([self.current['com']['pos'][0], self.current['com']['vel'][0], self.current['zmp']['pos'][0], \
                                             self.current['com']['pos'][1], self.current['com']['vel'][1], self.current['zmp']['pos'][1], \
                                             self.current['com']['pos'][2], self.current['com']['vel'][2], self.current['zmp']['pos'][2]]))
-        
+
         # update current state using kalman filter output
         self.current['com']['pos'][0] = x_flt[0]
         self.current['com']['vel'][0] = x_flt[1]
@@ -162,17 +171,17 @@ class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
             for key in ['pos', 'vel', 'acc']:
                 self.desired[foot][key] = feet_trajectories[foot][key]
 
-        # set torso and base references to the average of the feet
+        # set torso and base orientation references to the average of the feet
+        # (feet vectors are [linear, angular]; the orientation part is [3:6])
         for link in ['torso', 'base']:
             for key in ['pos', 'vel', 'acc']:
-                self.desired[link][key] = (self.desired['lfoot'][key][:3] + self.desired['rfoot'][key][:3]) / 2.
+                self.desired[link][key] = (self.desired['lfoot'][key][3:6] + self.desired['rfoot'][key][3:6]) / 2.
 
         # get torque commands using inverse dynamics
-        commands = self.id.get_joint_torques(self.desired, self.current, contact) 
-        
-        # set acceleration commands
-        for i in range(self.params['dof'] - 6):
-            self.hrp4.setCommand(i + 6, commands[i])
+        commands = self.id.get_joint_torques(self.desired, self.current, contact)
+
+        # set torque commands (actuators are ordered like the pinocchio joints)
+        self.data.ctrl[:] = commands
 
         # log and plot
         self.logger.log_data(self.current, self.desired)
@@ -182,29 +191,41 @@ class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
 
     def update_robot_model(self):
         # measurements taken from the simulator
-        q = self.hrp4.getPositions()   # [base orientation (rotvec), base position, joint positions]
-        v = self.hrp4.getVelocities()  # [base angular velocity, base linear velocity, joint velocities] (world frame)
+        d = self.data
+        base_position    = d.qpos[0:3]
+        base_orientation = R.from_quat(d.qpos[[4, 5, 6, 3]]).as_rotvec() # mujoco quaternion is wxyz
+        R_wb = R.from_rotvec(base_orientation).as_matrix()
+
+        # mujoco free joint: linear velocity is in the world frame, angular in the local frame
+        base_lin_velocity = d.qvel[0:3]
+        base_ang_velocity = R_wb @ d.qvel[3:6]
 
         # everything else is computed by pinocchio from these measurements
         self.robot_model.set_measurement(
-            base_position     = q[3:6],
-            base_orientation  = q[0:3],
-            base_lin_velocity = v[3:6],
-            base_ang_velocity = v[0:3],
-            joint_positions   = q[6:],
-            joint_velocities  = v[6:])
+            base_position     = base_position,
+            base_orientation  = base_orientation,
+            base_lin_velocity = base_lin_velocity,
+            base_ang_velocity = base_ang_velocity,
+            joint_positions   = d.qpos[self.qadr],
+            joint_velocities  = d.qvel[self.vadr])
 
     def measure_zmp(self):
         # contact forces are a measurement (force sensors at the feet); the zmp
-        # is derived from them together with the com height. dart reports the
-        # force acting on the ground, so we negate it to get the ground reaction
-        # force acting on the robot.
-        contacts = world.getLastCollisionResult().getContacts()
+        # is derived from them together with the com height
+        m, d = self.model, self.data
 
-        # total ground reaction force on the robot
+        # ground reaction forces on the robot, in the world frame
         force = np.zeros(3)
-        for contact in contacts:
-            force -= contact.force
+        grfs = []
+        f_contact = np.zeros(6)
+        for i in range(d.ncon):
+            contact = d.contact[i]
+            mujoco.mj_contactForce(m, d, i, f_contact)
+            # mj_contactForce is expressed in the contact frame (rows are the axes
+            # in world) and acts on the robot (geom2); rotate it to the world frame
+            grf = contact.frame.reshape(3, 3).T @ f_contact[0:3]
+            grfs.append((contact.pos.copy(), grf))
+            force += grf
 
         if force[2] <= 0.1: # threshold for when we lose contact
             return self.zmp.copy() # hold the last valid measurement
@@ -212,11 +233,10 @@ class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
         # compute zmp
         zmp = np.zeros(3)
         zmp[2] = self.robot_model.get_pose('com')[2] - force[2] / (self.robot_model.mass * self.params['g'] / self.params['h'])
-        for contact in contacts:
-            grf = - contact.force
+        for point, grf in grfs:
             if grf[2] <= 0.1: continue
-            zmp[0] += (contact.point[0] * grf[2] / force[2] + (zmp[2] - contact.point[2]) * grf[0] / force[2])
-            zmp[1] += (contact.point[1] * grf[2] / force[2] + (zmp[2] - contact.point[2]) * grf[1] / force[2])
+            zmp[0] += (point[0] * grf[2] / force[2] + (zmp[2] - point[2]) * grf[0] / force[2])
+            zmp[1] += (point[1] * grf[2] / force[2] + (zmp[2] - point[2]) * grf[1] / force[2])
 
         # remember it so we can hold it if we lose contact
         self.zmp = zmp.copy()
@@ -227,8 +247,8 @@ class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
         self.update_robot_model()
 
         # base pose and velocity are measurements (absolute localization estimator)
-        base_orientation = self.hrp4.getPositions()[0:3]
-        base_angular_velocity = self.hrp4.getVelocities()[0:3]
+        base_orientation = R.from_quat(self.data.qpos[[4, 5, 6, 3]]).as_rotvec()
+        base_angular_velocity = R.from_rotvec(base_orientation).as_matrix() @ self.data.qvel[3:6]
 
         # com and torso pose (orientation and position) from pinocchio
         com_position = self.robot_model.get_pose('com')
@@ -247,6 +267,9 @@ class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
         # zmp measured from the contact forces
         zmp = self.measure_zmp()
 
+        # generalized position: [base position, base orientation (rotvec), joint positions]
+        joint_position = np.concatenate((self.data.qpos[0:3], base_orientation, self.data.qpos[self.qadr]))
+
         # create state dict
         return {
             'lfoot': {'pos': left_foot_pose,
@@ -264,7 +287,7 @@ class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
             'base' : {'pos': base_orientation,
                       'vel': base_angular_velocity,
                       'acc': np.zeros(3)},
-            'joint': {'pos': self.hrp4.getPositions(),
+            'joint': {'pos': joint_position,
                       'vel': self.robot_model.v.copy(),
                       'acc': np.zeros(self.params['dof'])},
             'zmp'  : {'pos': zmp,
@@ -273,35 +296,12 @@ class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
         }
 
 if __name__ == "__main__":
-    world = dart.simulation.World()
+    node = Hrp4Controller()
 
-    urdfParser = dart.utils.DartLoader()
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    hrp4   = urdfParser.parseSkeleton(os.path.join(current_dir, "urdf", "hrp4.urdf"))
-    ground = urdfParser.parseSkeleton(os.path.join(current_dir, "urdf", "ground.urdf"))
-    world.addSkeleton(hrp4)
-    world.addSkeleton(ground)
-    world.setGravity([0, 0, -9.81])
-    world.setTimeStep(0.01)
-
-    # set default inertia
-    default_inertia = dart.dynamics.Inertia(1e-8, np.zeros(3), 1e-10 * np.identity(3))
-    for body in hrp4.getBodyNodes():
-        if body.getMass() == 0.0:
-            body.setMass(1e-8)
-            body.setInertia(default_inertia)
-
-    node = Hrp4Controller(world, hrp4)
-
-    # create world node and add it to viewer
-    viewer = dart.gui.osg.Viewer()
-    node.setTargetRealTimeFactor(10) # speed up the visualization by 10x
-    viewer.addWorldNode(node)
-
-    #viewer.setUpViewInWindow(0, 0, 1920, 1080)
-    viewer.setUpViewInWindow(0, 0, 1280, 720)
-    #viewer.setUpViewInWindow(0, 0, 640, 480)
-    viewer.setCameraHomePosition([5., -1., 1.5],
-                                 [1.,  0., 0.5],
-                                 [0.,  0., 1. ])
-    viewer.run()
+    with mujoco.viewer.launch_passive(node.model, node.data) as viewer:
+        viewer.cam.lookat = [1., 0., 0.5]
+        viewer.cam.distance = 4.
+        while viewer.is_running():
+            node.control()
+            mujoco.mj_step(node.model, node.data)
+            viewer.sync()

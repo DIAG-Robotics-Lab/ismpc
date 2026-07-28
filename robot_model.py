@@ -50,17 +50,17 @@ class RobotModel:
         pin.jacobianCenterOfMass(self.model, self.data, self.q)
         pin.dccrba(self.model, self.data, self.q, self.v)
 
-    # ----- poses and velocities ([angular, linear] rows, world frame) -----
-    # name is a frame name or 'com'; part optionally selects 'ang' or 'pos'
-    # pose is [rotation vector, position], velocity is [angular, linear]
+    # ----- poses and velocities ([linear, angular] rows, world frame) -----
+    # name is a frame name or 'com'; part optionally selects 'pos' or 'ang'
+    # pose is [position, rotation vector], velocity is [linear, angular]
     def get_pose(self, name, part=None):
         if name == 'com':
             x = self.data.com[0] # a point only has a position (pos)
         else:
             placement = self.data.oMf[self.frames[name]]
-            x = np.hstack((R.from_matrix(placement.rotation).as_rotvec(), placement.translation))
-            if   part == 'ang': x = x[0:3]
-            elif part == 'pos': x = x[3:6]
+            x = np.hstack((placement.translation, R.from_matrix(placement.rotation).as_rotvec()))
+            if   part == 'pos': x = x[0:3]
+            elif part == 'ang': x = x[3:6]
         return x.copy()
 
     def get_velocity(self, name, part=None):
@@ -68,22 +68,20 @@ class RobotModel:
             x = self.data.vcom[0]
         else:
             velocity = pin.getFrameVelocity(self.model, self.data, self.frames[name], pin.LOCAL_WORLD_ALIGNED)
-            x = np.hstack((velocity.angular, velocity.linear))
-            if   part == 'ang': x = x[0:3]
-            elif part == 'pos': x = x[3:6]
+            x = np.hstack((velocity.linear, velocity.angular))
+            if   part == 'pos': x = x[0:3]
+            elif part == 'ang': x = x[3:6]
         return x.copy()
 
-    # ----- jacobians ([angular, linear] rows, world frame, to match dart) -----
-    # name is a frame name or 'com'; part optionally selects 'ang' or 'pos' rows
+    # ----- jacobians ([linear, angular] rows, world frame) -----
+    # name is a frame name or 'com'; part optionally selects 'pos' or 'ang' rows
     def get_jacobian(self, name, part=None):
         if name == 'com':
             J = self.data.Jcom # the com only has a linear (pos) jacobian
         else:
-            # pinocchio returns [linear, angular]; reorder to [angular, linear] to match dart
             J = pin.getFrameJacobian(self.model, self.data, self.frames[name], pin.LOCAL_WORLD_ALIGNED)
-            J = np.vstack((J[3:6], J[0:3]))
-            if   part == 'ang': J = J[0:3]
-            elif part == 'pos': J = J[3:6]
+            if   part == 'pos': J = J[0:3]
+            elif part == 'ang': J = J[3:6]
         return J.copy()
 
     def get_jacobian_deriv(self, name, part=None):
@@ -91,9 +89,8 @@ class RobotModel:
             J = self.data.dAg[0:3, :] / self.mass
         else:
             J = pin.getFrameJacobianTimeVariation(self.model, self.data, self.frames[name], pin.LOCAL_WORLD_ALIGNED)
-            J = np.vstack((J[3:6], J[0:3]))
-            if   part == 'ang': J = J[0:3]
-            elif part == 'pos': J = J[3:6]
+            if   part == 'pos': J = J[0:3]
+            elif part == 'ang': J = J[3:6]
         return J.copy()
 
     # ----- dynamics -----
