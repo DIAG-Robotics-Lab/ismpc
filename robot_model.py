@@ -1,6 +1,5 @@
 import numpy as np
 import pinocchio as pin
-from scipy.spatial.transform import Rotation as R
 
 # Pinocchio-based kinematics and dynamics engine.
 # From the simulator we only take measurements (base pose and twist, joint
@@ -30,10 +29,10 @@ class RobotModel:
     # base twist is given in the world frame (as an estimator would provide it);
     # pinocchio expects the free-flyer twist in the local base frame.
     def set_measurement(self, base_position, base_orientation, base_lin_velocity, base_ang_velocity, joint_positions, joint_velocities):
-        R_wb = R.from_rotvec(base_orientation).as_matrix()
+        R_wb = pin.exp3(base_orientation)
 
         self.q[0:3] = base_position
-        self.q[3:7] = R.from_matrix(R_wb).as_quat() # xyzw
+        self.q[3:7] = pin.Quaternion(R_wb).coeffs() # xyzw
         self.q[7:]  = joint_positions
 
         self.v[0:3] = R_wb.T @ base_lin_velocity
@@ -58,7 +57,7 @@ class RobotModel:
             x = self.data.com[0] # a point only has a position (pos)
         else:
             placement = self.data.oMf[self.frames[name]]
-            x = np.hstack((placement.translation, R.from_matrix(placement.rotation).as_rotvec()))
+            x = np.hstack((placement.translation, pin.log3(placement.rotation)))
             if   part == 'pos': x = x[0:3]
             elif part == 'ang': x = x[3:6]
         return x.copy()

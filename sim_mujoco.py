@@ -1,9 +1,9 @@
 import numpy as np
 import mujoco
 import mujoco.viewer
+import pinocchio as pin
 import copy
 import time
-from scipy.spatial.transform import Rotation as R
 from utils import *
 import os
 import ismpc
@@ -214,8 +214,8 @@ class Hrp4Controller:
         # measurements taken from the simulator
         d = self.data
         base_position    = d.qpos[0:3]
-        base_orientation = R.from_quat(d.qpos[[4, 5, 6, 3]]).as_rotvec() # mujoco quaternion is wxyz
-        R_wb = R.from_rotvec(base_orientation).as_matrix()
+        R_wb = pin.Quaternion(*d.qpos[3:7]).matrix() # mujoco quaternion is wxyz
+        base_orientation = pin.log3(R_wb)
 
         # mujoco free joint: linear velocity is in the world frame, angular in the local frame
         base_lin_velocity = d.qvel[0:3]
@@ -268,8 +268,9 @@ class Hrp4Controller:
         self.update_robot_model()
 
         # base pose and velocity are measurements (absolute localization estimator)
-        base_orientation = R.from_quat(self.data.qpos[[4, 5, 6, 3]]).as_rotvec()
-        base_angular_velocity = R.from_rotvec(base_orientation).as_matrix() @ self.data.qvel[3:6]
+        R_wb = pin.Quaternion(*self.data.qpos[3:7]).matrix()
+        base_orientation = pin.log3(R_wb)
+        base_angular_velocity = R_wb @ self.data.qvel[3:6]
 
         # com and torso pose (orientation and position) from pinocchio
         com_position = self.robot_model.get_pose('com')

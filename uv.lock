@@ -424,7 +424,6 @@ dependencies = [
     { name = "osqp" },
     { name = "pin" },
     { name = "proxsuite" },
-    { name = "scipy" },
 ]
 
 [package.metadata]
@@ -436,7 +435,6 @@ requires-dist = [
     { name = "osqp", specifier = ">=0.6" },
     { name = "pin", specifier = ">=2.7" },
     { name = "proxsuite", specifier = ">=0.7.3" },
-    { name = "scipy", specifier = ">=1.11" },
 ]
 
 [[package]]

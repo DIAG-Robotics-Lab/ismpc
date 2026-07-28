@@ -1,22 +1,34 @@
 import proxsuite
-from scipy.spatial.transform import Rotation as R
 import numpy as np
+import math
 
+# rotation vector of the relative rotation R_b^-1 * R_a, computed directly with
+# quaternions (much faster than a general rotation library in the control loop)
 def rotation_vector_difference(rotvec_a, rotvec_b):
-    R_a = R.from_rotvec(rotvec_a)
-    R_b = R.from_rotvec(rotvec_b)
-    R_diff = R_b.inv() * R_a
-    return R_diff.as_rotvec()
+    def to_quat(v):
+        theta = math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2])
+        s = 0.5 if theta < 1e-8 else math.sin(0.5 * theta) / theta
+        return math.cos(0.5 * theta), s * v[0], s * v[1], s * v[2]
+
+    aw, ax, ay, az = to_quat(rotvec_a)
+    bw, bx, by, bz = to_quat(rotvec_b)
+
+    # quaternion product conj(b) * a
+    w = bw * aw + bx * ax + by * ay + bz * az
+    x = bw * ax - bx * aw - by * az + bz * ay
+    y = bw * ay + bx * az - by * aw - bz * ax
+    z = bw * az - bx * ay + by * ax - bz * aw
+
+    if w < 0.: w, x, y, z = -w, -x, -y, -z # take the shortest rotation
+    n = math.sqrt(x * x + y * y + z * z)
+    if n < 1e-8: return np.array([2. * x, 2. * y, 2. * z])
+    k = 2. * math.atan2(n, w) / n
+    return np.array([k * x, k * y, k * z])
 
 def pose_difference(pose_a, pose_b):
     pos_diff = pose_a[:3] - pose_b[:3]
     rot_diff = rotation_vector_difference(pose_a[3:], pose_b[3:])
     return np.hstack((pos_diff, rot_diff))
-
-# converts a rotation matrix to a rotation vector
-def get_rotvec(rot_matrix):
-    rotation = R.from_matrix(rot_matrix)
-    return rotation.as_rotvec()
 
 def block_diag(*arrays):
     arrays = [np.atleast_2d(a) if np.isscalar(a) else np.atleast_2d(a) for a in arrays]
