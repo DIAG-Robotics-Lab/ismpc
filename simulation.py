@@ -17,6 +17,7 @@ class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
         self.world = world
         self.hrp4 = hrp4
         self.time = 0
+        self.zmp = np.zeros(3) # last valid zmp measurement, held while airborne
         self.params = {
             'g': 9.81,
             'h': 0.72,
@@ -195,25 +196,30 @@ class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
 
     def measure_zmp(self):
         # contact forces are a measurement (force sensors at the feet); the zmp
-        # is derived from them together with the com height
+        # is derived from them together with the com height. dart reports the
+        # force acting on the ground, so we negate it to get the ground reaction
+        # force acting on the robot.
         contacts = world.getLastCollisionResult().getContacts()
 
-        # total contact force
+        # total ground reaction force on the robot
         force = np.zeros(3)
         for contact in contacts:
-            force += contact.force
+            force -= contact.force
 
         if force[2] <= 0.1: # threshold for when we lose contact
-            return np.zeros(3) # FIXME: this should return previous measurement
+            return self.zmp.copy() # hold the last valid measurement
 
         # compute zmp
         zmp = np.zeros(3)
         zmp[2] = self.robot_model.get_pose('com')[2] - force[2] / (self.robot_model.mass * self.params['g'] / self.params['h'])
         for contact in contacts:
-            if contact.force[2] <= 0.1: continue
-            zmp[0] += (contact.point[0] * contact.force[2] / force[2] + (zmp[2] - contact.point[2]) * contact.force[0] / force[2])
-            zmp[1] += (contact.point[1] * contact.force[2] / force[2] + (zmp[2] - contact.point[2]) * contact.force[1] / force[2])
+            grf = - contact.force
+            if grf[2] <= 0.1: continue
+            zmp[0] += (contact.point[0] * grf[2] / force[2] + (zmp[2] - contact.point[2]) * grf[0] / force[2])
+            zmp[1] += (contact.point[1] * grf[2] / force[2] + (zmp[2] - contact.point[2]) * grf[1] / force[2])
 
+        # remember it so we can hold it if we lose contact
+        self.zmp = zmp.copy()
         return zmp
 
     def retrieve_state(self):
