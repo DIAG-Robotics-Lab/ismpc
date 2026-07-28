@@ -1,11 +1,10 @@
-import dartpy as dart
 import numpy as np
 from utils import *
 
 class InverseDynamics:
     def __init__(self, robot, redundant_dofs, foot_size=0.1, µ=0.5):
         self.robot = robot
-        self.dofs = self.robot.getNumDofs()
+        self.dofs = self.robot.nv
         self.d = foot_size / 2.
         self.µ = µ
 
@@ -23,19 +22,12 @@ class InverseDynamics:
         # selection matrix for redundant dofs
         self.joint_selection = np.zeros((self.dofs, self.dofs))
         for i in range(self.dofs):
-            joint_name = self.robot.getDof(i).getName()
-            if joint_name in redundant_dofs:
+            if self.robot.dof_names[i] in redundant_dofs:
                 self.joint_selection[i, i] = 1
 
     def get_joint_torques(self, desired, current, contact):
         contact_l = contact == 'lfoot'  or contact == 'ds'
         contact_r = contact == 'rfoot' or contact == 'ds'
-
-        # robot parameters
-        lsole = self.robot.getBodyNode('l_sole')
-        rsole = self.robot.getBodyNode('r_sole')
-        torso = self.robot.getBodyNode('torso')
-        base  = self.robot.getBodyNode('body')
 
         # weights and gains
         tasks = ['lfoot', 'rfoot', 'com', 'torso', 'base', 'joints']
@@ -44,19 +36,19 @@ class InverseDynamics:
         vel_gains = {'lfoot': 10., 'rfoot': 10., 'com': 10., 'torso': 2., 'base': 2., 'joints': 1.   }
 
         # jacobians
-        J = {'lfoot' : self.robot.getJacobian(lsole,        inCoordinatesOf=dart.dynamics.Frame.World()),
-             'rfoot' : self.robot.getJacobian(rsole,        inCoordinatesOf=dart.dynamics.Frame.World()),
-             'com'   : self.robot.getCOMLinearJacobian(     inCoordinatesOf=dart.dynamics.Frame.World()),
-             'torso' : self.robot.getAngularJacobian(torso, inCoordinatesOf=dart.dynamics.Frame.World()),
-             'base'  : self.robot.getAngularJacobian(base,  inCoordinatesOf=dart.dynamics.Frame.World()),
+        J = {'lfoot' : self.robot.get_frame_jacobian('l_sole'),
+             'rfoot' : self.robot.get_frame_jacobian('r_sole'),
+             'com'   : self.robot.get_com_jacobian(),
+             'torso' : self.robot.get_angular_jacobian('torso'),
+             'base'  : self.robot.get_angular_jacobian('body'),
              'joints': self.joint_selection}
 
         # jacobians derivatives
-        Jdot = {'lfoot' : self.robot.getJacobianClassicDeriv(lsole, inCoordinatesOf=dart.dynamics.Frame.World()),
-                'rfoot' : self.robot.getJacobianClassicDeriv(rsole, inCoordinatesOf=dart.dynamics.Frame.World()),
-                'com'   : self.robot.getCOMLinearJacobianDeriv(     inCoordinatesOf=dart.dynamics.Frame.World()),
-                'torso' : self.robot.getAngularJacobianDeriv(torso, inCoordinatesOf=dart.dynamics.Frame.World()),
-                'base'  : self.robot.getAngularJacobianDeriv(base,  inCoordinatesOf=dart.dynamics.Frame.World()),
+        Jdot = {'lfoot' : self.robot.get_frame_jacobian_deriv('l_sole'),
+                'rfoot' : self.robot.get_frame_jacobian_deriv('r_sole'),
+                'com'   : self.robot.get_com_jacobian_deriv(),
+                'torso' : self.robot.get_angular_jacobian_deriv('torso'),
+                'base'  : self.robot.get_angular_jacobian_deriv('body'),
                 'joints': np.zeros((self.dofs, self.dofs))}
 
         # feedforward terms
@@ -104,11 +96,11 @@ class InverseDynamics:
         H[np.ix_(f_c_indices, f_c_indices)] += np.eye(len(f_c_indices)) * 1e-6
 
         # dynamics constraints: M * q_ddot + C - J_c^T * f_c = tau
-        inertia_matrix = self.robot.getMassMatrix()
+        inertia_matrix = self.robot.get_mass_matrix()
         actuation_matrix = block_diag(np.zeros((6, 6)), np.eye(self.dofs - 6))
         contact_jacobian = np.vstack((contact_l * J['lfoot'], contact_r * J['rfoot']))
         A_eq = np.hstack((inertia_matrix, - actuation_matrix, - contact_jacobian.T))
-        b_eq = - self.robot.getCoriolisAndGravityForces()
+        b_eq = - self.robot.get_coriolis_and_gravity_forces()
 
         # inequality constraints
         A_ineq = np.zeros((self.n_ineq_constraints, self.n_vars))

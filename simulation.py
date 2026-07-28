@@ -8,6 +8,7 @@ import footstep_planner
 import inverse_dynamics as id
 import filter
 import foot_trajectory_generator as ftg
+from robot_model import RobotModel
 from logger import Logger
 
 class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
@@ -31,11 +32,9 @@ class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
         }
         self.params['eta'] = np.sqrt(self.params['g'] / self.params['h'])
 
-        # robot links
-        self.lsole = hrp4.getBodyNode('l_sole')
-        self.rsole = hrp4.getBodyNode('r_sole')
-        self.torso = hrp4.getBodyNode('torso')
-        self.base  = hrp4.getBodyNode('body')
+        # pinocchio model: computes all kinematics/dynamics terms from the measurements
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        self.robot_model = RobotModel(os.path.join(current_dir, "urdf", "hrp4.urdf"))
 
         for i in range(hrp4.getNumJoints()):
             joint = hrp4.getJoint(i)
@@ -56,8 +55,9 @@ class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
             self.hrp4.setPosition(self.hrp4.getDof(joint_name).getIndexInSkeleton(), value * np.pi / 180.)
 
         # position the robot on the ground
-        lsole_pos = self.lsole.getTransform(withRespectTo=dart.dynamics.Frame.World(), inCoordinatesOf=dart.dynamics.Frame.World()).translation()
-        rsole_pos = self.rsole.getTransform(withRespectTo=dart.dynamics.Frame.World(), inCoordinatesOf=dart.dynamics.Frame.World()).translation()
+        self.update_robot_model()
+        lsole_pos = self.robot_model.get_frame_pose('l_sole')[3:]
+        rsole_pos = self.robot_model.get_frame_pose('r_sole')[3:]
         self.hrp4.setPosition(3, - (lsole_pos[0] + rsole_pos[0]) / 2.)
         self.hrp4.setPosition(4, - (lsole_pos[1] + rsole_pos[1]) / 2.)
         self.hrp4.setPosition(5, - (lsole_pos[2] + rsole_pos[2]) / 2.)
@@ -74,7 +74,7 @@ class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
             "L_SHOULDER_P", "L_SHOULDER_R", "L_SHOULDER_Y", "L_ELBOW_P"]
         
         # initialize inverse dynamics
-        self.id = id.InverseDynamics(self.hrp4, redundant_dofs)
+        self.id = id.InverseDynamics(self.robot_model, redundant_dofs)
 
         # initialize footstep planner
         reference = [(0.1, 0., 0.2)] * 5 + [(0.1, 0., -0.1)] * 10 + [(0.1, 0., 0.)] * 10
@@ -179,28 +179,43 @@ class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
 
         self.time += 1
 
+    def update_robot_model(self):
+        # measurements taken from the simulator
+        q = self.hrp4.getPositions()   # [base orientation (rotvec), base position, joint positions]
+        v = self.hrp4.getVelocities()  # [base angular velocity, base linear velocity, joint velocities] (world frame)
+
+        # everything else is computed by pinocchio from these measurements
+        self.robot_model.set_measurement(
+            base_position     = q[3:6],
+            base_orientation  = q[0:3],
+            base_lin_velocity = v[3:6],
+            base_ang_velocity = v[0:3],
+            joint_positions   = q[6:],
+            joint_velocities  = v[6:])
+
     def retrieve_state(self):
-        # com and torso pose (orientation and position)
-        com_position = self.hrp4.getCOM()
-        torso_orientation = get_rotvec(self.hrp4.getBodyNode('torso').getTransform(withRespectTo=dart.dynamics.Frame.World(), inCoordinatesOf=dart.dynamics.Frame.World()).rotation())
-        base_orientation  = get_rotvec(self.hrp4.getBodyNode('body' ).getTransform(withRespectTo=dart.dynamics.Frame.World(), inCoordinatesOf=dart.dynamics.Frame.World()).rotation())
+        # update the pinocchio model with the current measurements
+        self.update_robot_model()
 
-        # feet poses (orientation and position)
-        l_foot_transform = self.lsole.getTransform(withRespectTo=dart.dynamics.Frame.World(), inCoordinatesOf=dart.dynamics.Frame.World())
-        l_foot_orientation = get_rotvec(l_foot_transform.rotation())
-        l_foot_position = l_foot_transform.translation()
-        left_foot_pose = np.hstack((l_foot_orientation, l_foot_position))
-        r_foot_transform = self.rsole.getTransform(withRespectTo=dart.dynamics.Frame.World(), inCoordinatesOf=dart.dynamics.Frame.World())
-        r_foot_orientation = get_rotvec(r_foot_transform.rotation())
-        r_foot_position = r_foot_transform.translation()
-        right_foot_pose = np.hstack((r_foot_orientation, r_foot_position))
+        # base pose and velocity are measurements (absolute localization estimator)
+        base_orientation = self.hrp4.getPositions()[0:3]
+        base_angular_velocity = self.hrp4.getVelocities()[0:3]
 
-        # velocities
-        com_velocity = self.hrp4.getCOMLinearVelocity(relativeTo=dart.dynamics.Frame.World(), inCoordinatesOf=dart.dynamics.Frame.World())
-        torso_angular_velocity = self.hrp4.getBodyNode('torso').getAngularVelocity(relativeTo=dart.dynamics.Frame.World(), inCoordinatesOf=dart.dynamics.Frame.World())
-        base_angular_velocity = self.hrp4.getBodyNode('body').getAngularVelocity(relativeTo=dart.dynamics.Frame.World(), inCoordinatesOf=dart.dynamics.Frame.World())
-        l_foot_spatial_velocity = self.lsole.getSpatialVelocity(relativeTo=dart.dynamics.Frame.World(), inCoordinatesOf=dart.dynamics.Frame.World())
-        r_foot_spatial_velocity = self.rsole.getSpatialVelocity(relativeTo=dart.dynamics.Frame.World(), inCoordinatesOf=dart.dynamics.Frame.World())
+        # com and torso pose (orientation and position) from pinocchio
+        com_position = self.robot_model.get_com_position()
+        torso_orientation = self.robot_model.get_frame_orientation('torso')
+
+        # feet poses (orientation and position) from pinocchio
+        left_foot_pose  = self.robot_model.get_frame_pose('l_sole')
+        right_foot_pose = self.robot_model.get_frame_pose('r_sole')
+        l_foot_position = left_foot_pose[3:]
+        r_foot_position = right_foot_pose[3:]
+
+        # velocities from pinocchio
+        com_velocity = self.robot_model.get_com_velocity()
+        torso_angular_velocity = self.robot_model.get_frame_angular_velocity('torso')
+        l_foot_spatial_velocity = self.robot_model.get_frame_spatial_velocity('l_sole')
+        r_foot_spatial_velocity = self.robot_model.get_frame_spatial_velocity('r_sole')
 
         # compute total contact force
         force = np.zeros(3)
@@ -209,7 +224,7 @@ class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
 
         # compute zmp
         zmp = np.zeros(3)
-        zmp[2] = com_position[2] - force[2] / (self.hrp4.getMass() * self.params['g'] / self.params['h'])
+        zmp[2] = com_position[2] - force[2] / (self.robot_model.mass * self.params['g'] / self.params['h'])
         for contact in world.getLastCollisionResult().getContacts():
             if contact.force[2] <= 0.1: continue
             zmp[0] += (contact.point[0] * contact.force[2] / force[2] + (zmp[2] - contact.point[2]) * contact.force[0] / force[2])
@@ -242,7 +257,7 @@ class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
                       'vel': base_angular_velocity,
                       'acc': np.zeros(3)},
             'joint': {'pos': self.hrp4.getPositions(),
-                      'vel': self.hrp4.getVelocities(),
+                      'vel': self.robot_model.v.copy(),
                       'acc': np.zeros(self.params['dof'])},
             'zmp'  : {'pos': zmp,
                       'vel': np.zeros(3),

@@ -13,7 +13,7 @@ The extension available in this repository uses the 3D LIP and can also generate
 # Setup
 You need a Python installation and some dependencis. If using pip, you can run the following
 ```
-pip install dartpy casadi scipy matplotlib osqp
+pip install dartpy casadi scipy matplotlib osqp pin
 ```
 You need dartpy 0.2, if pip does not allow you to install this version on your system, you probably need to upgrade to Python 3.12 or use conda
 
