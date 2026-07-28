@@ -56,8 +56,8 @@ class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
 
         # position the robot on the ground
         self.update_robot_model()
-        lsole_pos = self.robot_model.get_frame_pose('l_sole')[3:]
-        rsole_pos = self.robot_model.get_frame_pose('r_sole')[3:]
+        lsole_pos = self.robot_model.get_pose('l_sole', 'pos')
+        rsole_pos = self.robot_model.get_pose('r_sole', 'pos')
         self.hrp4.setPosition(3, - (lsole_pos[0] + rsole_pos[0]) / 2.)
         self.hrp4.setPosition(4, - (lsole_pos[1] + rsole_pos[1]) / 2.)
         self.hrp4.setPosition(5, - (lsole_pos[2] + rsole_pos[2]) / 2.)
@@ -193,6 +193,29 @@ class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
             joint_positions   = q[6:],
             joint_velocities  = v[6:])
 
+    def measure_zmp(self):
+        # contact forces are a measurement (force sensors at the feet); the zmp
+        # is derived from them together with the com height
+        contacts = world.getLastCollisionResult().getContacts()
+
+        # total contact force
+        force = np.zeros(3)
+        for contact in contacts:
+            force += contact.force
+
+        if force[2] <= 0.1: # threshold for when we lose contact
+            return np.zeros(3) # FIXME: this should return previous measurement
+
+        # compute zmp
+        zmp = np.zeros(3)
+        zmp[2] = self.robot_model.get_pose('com')[2] - force[2] / (self.robot_model.mass * self.params['g'] / self.params['h'])
+        for contact in contacts:
+            if contact.force[2] <= 0.1: continue
+            zmp[0] += (contact.point[0] * contact.force[2] / force[2] + (zmp[2] - contact.point[2]) * contact.force[0] / force[2])
+            zmp[1] += (contact.point[1] * contact.force[2] / force[2] + (zmp[2] - contact.point[2]) * contact.force[1] / force[2])
+
+        return zmp
+
     def retrieve_state(self):
         # update the pinocchio model with the current measurements
         self.update_robot_model()
@@ -202,42 +225,21 @@ class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
         base_angular_velocity = self.hrp4.getVelocities()[0:3]
 
         # com and torso pose (orientation and position) from pinocchio
-        com_position = self.robot_model.get_com_position()
-        torso_orientation = self.robot_model.get_frame_orientation('torso')
+        com_position = self.robot_model.get_pose('com')
+        torso_orientation = self.robot_model.get_pose('torso', 'ang')
 
         # feet poses (orientation and position) from pinocchio
-        left_foot_pose  = self.robot_model.get_frame_pose('l_sole')
-        right_foot_pose = self.robot_model.get_frame_pose('r_sole')
-        l_foot_position = left_foot_pose[3:]
-        r_foot_position = right_foot_pose[3:]
+        left_foot_pose  = self.robot_model.get_pose('l_sole')
+        right_foot_pose = self.robot_model.get_pose('r_sole')
 
         # velocities from pinocchio
-        com_velocity = self.robot_model.get_com_velocity()
-        torso_angular_velocity = self.robot_model.get_frame_angular_velocity('torso')
-        l_foot_spatial_velocity = self.robot_model.get_frame_spatial_velocity('l_sole')
-        r_foot_spatial_velocity = self.robot_model.get_frame_spatial_velocity('r_sole')
+        com_velocity = self.robot_model.get_velocity('com')
+        torso_angular_velocity = self.robot_model.get_velocity('torso', 'ang')
+        l_foot_spatial_velocity = self.robot_model.get_velocity('l_sole')
+        r_foot_spatial_velocity = self.robot_model.get_velocity('r_sole')
 
-        # compute total contact force
-        force = np.zeros(3)
-        for contact in world.getLastCollisionResult().getContacts():
-            force += contact.force
-
-        # compute zmp
-        zmp = np.zeros(3)
-        zmp[2] = com_position[2] - force[2] / (self.robot_model.mass * self.params['g'] / self.params['h'])
-        for contact in world.getLastCollisionResult().getContacts():
-            if contact.force[2] <= 0.1: continue
-            zmp[0] += (contact.point[0] * contact.force[2] / force[2] + (zmp[2] - contact.point[2]) * contact.force[0] / force[2])
-            zmp[1] += (contact.point[1] * contact.force[2] / force[2] + (zmp[2] - contact.point[2]) * contact.force[1] / force[2])
-
-        if force[2] <= 0.1: # threshold for when we lose contact
-            zmp = np.array([0., 0., 0.]) # FIXME: this should return previous measurement
-        else:
-            # sometimes we get contact points that dont make sense, so we clip the ZMP close to the robot
-            midpoint = (l_foot_position + l_foot_position) / 2.
-            zmp[0] = np.clip(zmp[0], midpoint[0] - 0.3, midpoint[0] + 0.3)
-            zmp[1] = np.clip(zmp[1], midpoint[1] - 0.3, midpoint[1] + 0.3)
-            zmp[2] = np.clip(zmp[2], midpoint[2] - 0.3, midpoint[2] + 0.3)
+        # zmp measured from the contact forces
+        zmp = self.measure_zmp()
 
         # create state dict
         return {

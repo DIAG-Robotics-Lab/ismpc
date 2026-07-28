@@ -36,19 +36,19 @@ class InverseDynamics:
         vel_gains = {'lfoot': 10., 'rfoot': 10., 'com': 10., 'torso': 2., 'base': 2., 'joints': 1.   }
 
         # jacobians
-        J = {'lfoot' : self.robot.get_frame_jacobian('l_sole'),
-             'rfoot' : self.robot.get_frame_jacobian('r_sole'),
-             'com'   : self.robot.get_com_jacobian(),
-             'torso' : self.robot.get_angular_jacobian('torso'),
-             'base'  : self.robot.get_angular_jacobian('body'),
+        J = {'lfoot' : self.robot.get_jacobian('l_sole'),
+             'rfoot' : self.robot.get_jacobian('r_sole'),
+             'com'   : self.robot.get_jacobian('com'),
+             'torso' : self.robot.get_jacobian('torso', 'ang'),
+             'base'  : self.robot.get_jacobian('body', 'ang'),
              'joints': self.joint_selection}
 
         # jacobians derivatives
-        Jdot = {'lfoot' : self.robot.get_frame_jacobian_deriv('l_sole'),
-                'rfoot' : self.robot.get_frame_jacobian_deriv('r_sole'),
-                'com'   : self.robot.get_com_jacobian_deriv(),
-                'torso' : self.robot.get_angular_jacobian_deriv('torso'),
-                'base'  : self.robot.get_angular_jacobian_deriv('body'),
+        Jdot = {'lfoot' : self.robot.get_jacobian_deriv('l_sole'),
+                'rfoot' : self.robot.get_jacobian_deriv('r_sole'),
+                'com'   : self.robot.get_jacobian_deriv('com'),
+                'torso' : self.robot.get_jacobian_deriv('torso', 'ang'),
+                'base'  : self.robot.get_jacobian_deriv('body', 'ang'),
                 'joints': np.zeros((self.dofs, self.dofs))}
 
         # feedforward terms

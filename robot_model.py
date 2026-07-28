@@ -50,49 +50,51 @@ class RobotModel:
         pin.jacobianCenterOfMass(self.model, self.data, self.q)
         pin.dccrba(self.model, self.data, self.q, self.v)
 
-    # ----- kinematics (world frame) -----
-    def get_com_position(self):
-        return self.data.com[0].copy()
+    # ----- poses and velocities ([angular, linear] rows, world frame) -----
+    # name is a frame name or 'com'; part optionally selects 'ang' or 'pos'
+    # pose is [rotation vector, position], velocity is [angular, linear]
+    def get_pose(self, name, part=None):
+        if name == 'com':
+            x = self.data.com[0] # a point only has a position (pos)
+        else:
+            placement = self.data.oMf[self.frames[name]]
+            x = np.hstack((R.from_matrix(placement.rotation).as_rotvec(), placement.translation))
+            if   part == 'ang': x = x[0:3]
+            elif part == 'pos': x = x[3:6]
+        return x.copy()
 
-    def get_com_velocity(self):
-        return self.data.vcom[0].copy()
-
-    # pose as [rotation vector, position], matching the rest of the code
-    def get_frame_pose(self, name):
-        placement = self.data.oMf[self.frames[name]]
-        return np.hstack((R.from_matrix(placement.rotation).as_rotvec(), placement.translation))
-
-    def get_frame_orientation(self, name):
-        return R.from_matrix(self.data.oMf[self.frames[name]].rotation).as_rotvec()
-
-    # spatial velocity as [angular, linear] in the world frame
-    def get_frame_spatial_velocity(self, name):
-        velocity = pin.getFrameVelocity(self.model, self.data, self.frames[name], pin.LOCAL_WORLD_ALIGNED)
-        return np.hstack((velocity.angular, velocity.linear))
-
-    def get_frame_angular_velocity(self, name):
-        return pin.getFrameVelocity(self.model, self.data, self.frames[name], pin.LOCAL_WORLD_ALIGNED).angular.copy()
+    def get_velocity(self, name, part=None):
+        if name == 'com':
+            x = self.data.vcom[0]
+        else:
+            velocity = pin.getFrameVelocity(self.model, self.data, self.frames[name], pin.LOCAL_WORLD_ALIGNED)
+            x = np.hstack((velocity.angular, velocity.linear))
+            if   part == 'ang': x = x[0:3]
+            elif part == 'pos': x = x[3:6]
+        return x.copy()
 
     # ----- jacobians ([angular, linear] rows, world frame, to match dart) -----
-    def get_frame_jacobian(self, name):
-        J = pin.getFrameJacobian(self.model, self.data, self.frames[name], pin.LOCAL_WORLD_ALIGNED)
-        return np.vstack((J[3:6], J[0:3]))
+    # name is a frame name or 'com'; part optionally selects 'ang' or 'pos' rows
+    def get_jacobian(self, name, part=None):
+        if name == 'com':
+            J = self.data.Jcom # the com only has a linear (pos) jacobian
+        else:
+            # pinocchio returns [linear, angular]; reorder to [angular, linear] to match dart
+            J = pin.getFrameJacobian(self.model, self.data, self.frames[name], pin.LOCAL_WORLD_ALIGNED)
+            J = np.vstack((J[3:6], J[0:3]))
+            if   part == 'ang': J = J[0:3]
+            elif part == 'pos': J = J[3:6]
+        return J.copy()
 
-    def get_angular_jacobian(self, name):
-        return pin.getFrameJacobian(self.model, self.data, self.frames[name], pin.LOCAL_WORLD_ALIGNED)[3:6].copy()
-
-    def get_com_jacobian(self):
-        return self.data.Jcom.copy()
-
-    def get_frame_jacobian_deriv(self, name):
-        dJ = pin.getFrameJacobianTimeVariation(self.model, self.data, self.frames[name], pin.LOCAL_WORLD_ALIGNED)
-        return np.vstack((dJ[3:6], dJ[0:3]))
-
-    def get_angular_jacobian_deriv(self, name):
-        return pin.getFrameJacobianTimeVariation(self.model, self.data, self.frames[name], pin.LOCAL_WORLD_ALIGNED)[3:6].copy()
-
-    def get_com_jacobian_deriv(self):
-        return self.data.dAg[0:3, :] / self.mass
+    def get_jacobian_deriv(self, name, part=None):
+        if name == 'com':
+            J = self.data.dAg[0:3, :] / self.mass
+        else:
+            J = pin.getFrameJacobianTimeVariation(self.model, self.data, self.frames[name], pin.LOCAL_WORLD_ALIGNED)
+            J = np.vstack((J[3:6], J[0:3]))
+            if   part == 'ang': J = J[0:3]
+            elif part == 'pos': J = J[3:6]
+        return J.copy()
 
     # ----- dynamics -----
     def get_mass_matrix(self):
